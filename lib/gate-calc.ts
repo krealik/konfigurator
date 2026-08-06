@@ -66,6 +66,7 @@ export interface GateResult {
     lamely: MaterialPolozka
   }
   cena: CenovaKalkulacia
+  priestorPriOtvoreni: number
 }
 
 function tyceAOdpad(potrebnaDlzkaMm: number) {
@@ -182,5 +183,8 @@ export function vypocitajBranku(vstup: GateInput): GateResult {
       instalacnyKit,
       spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + instalacnyKit,
     },
+    // Priestor, ktorý krídlo zaberie pri otvorení na 90° (od osi pántov smerom von/dnu).
+    // Pri jednokrídlovej bránke = celá šírka krídla, pri dvojkrídlovej bráne = šírka jedného krídla.
+    priestorPriOtvoreni: sirkaKridla,
   }
 }
