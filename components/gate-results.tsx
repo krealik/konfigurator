@@ -27,6 +27,7 @@ export function GateResults({ vstup, vysledok }: Props) {
       {!jeBrana && <><ParamRow label="Počet lamiel" value={`${vysledok.pocetLamiel} ks`} /><ParamRow label="Skutočná medzera" value={`${fmt(vysledok.skutocnaMedzera, 1)} mm`} /></>}
       {jeBrana && <><ParamRow label="Počet lamiel spolu" value={`${vysledok.pocetLamiel} ks`} /><ParamRow label="Spodná časť / krídlo" value={`${vysledok.lamelySpodnaCast?.pocet ?? 0} ks, priestor ${fmt(vysledok.lamelySpodnaCast?.vyskaMm ?? 0)} mm`} /><ParamRow label="Horná časť / krídlo" value={`${vysledok.lamelyHornaCast?.pocet ?? 0} ks, priestor ${fmt(vysledok.lamelyHornaCast?.vyskaMm ?? 0)} mm`} /></>}
       <ParamRow label="Rezná dĺžka lamely" value={`${fmt(vysledok.dlzkaLamely)} mm`} />
+      <ParamRow label={jeBrana ? "Priestor pri otvorení (každé krídlo)" : "Priestor pri otvorení na 90°"} value={`~${fmt(vysledok.priestorPriOtvoreni)} mm`} />
     </div></section>
 
     <section><h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">Rozpis na rezanie — profil 50×60 mm</h3><div className="overflow-hidden rounded-md border border-border bg-card">
