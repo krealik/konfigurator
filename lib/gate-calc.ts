@@ -2,14 +2,18 @@ import {
   RAM_PROFIL_HRUBKA_MM,
   DLZKA_TYCE_MM,
   LAMELA_ZASUNUTIE_MM,
+  PRIECKA_VYSKA_OD_ZEME_MM,
   CENNIK,
   najdiPovrch,
   type SirkaLamely,
   type PovrchId,
   type Orientacia,
+  type TypProduktu,
 } from "./gate-config"
 
 export interface GateInput {
+  typProduktu: TypProduktu
+  nazovZakaznika: string
   sirkaKridla: number
   vyskaKridla: number
   sirkaLamely: SirkaLamely
@@ -35,7 +39,6 @@ export interface CenovaKalkulacia {
   spolu: number
 }
 
-/** Jedna položka rozpisu na rezanie profilu (dĺžka + počet kusov). */
 export interface RezPolozka {
   nazov: string
   dlzkaMm: number
@@ -43,14 +46,19 @@ export interface RezPolozka {
 }
 
 export interface GateResult {
+  typProduktu: TypProduktu
+  sirkaKridla: number
+  pocetKridiel: number
   vnutornaSirka: number
   dlzkaLamely: number
   pocetLamiel: number
   skutocnaMedzera: number
-  /** Rezné dĺžky jednotlivých kusov profilu 50×60mm. */
+  lamelySpodnaCast?: { vyskaMm: number; pocet: number; skutocnaMedzera: number }
+  lamelyHornaCast?: { vyskaMm: number; pocet: number; skutocnaMedzera: number }
   profilRezy: {
     zvislyRam: RezPolozka
     vodorovnyRam: RezPolozka
+    strednaPriecka?: RezPolozka
     stlpiky: RezPolozka
   }
   material: {
@@ -60,67 +68,97 @@ export interface GateResult {
   cena: CenovaKalkulacia
 }
 
-/** Koľko tyčí (6 m) treba na pokrytie celkovej dĺžky + koľko materiálu zostane. */
 function tyceAOdpad(potrebnaDlzkaMm: number) {
   const pocetTyci = potrebnaDlzkaMm > 0 ? Math.ceil(potrebnaDlzkaMm / DLZKA_TYCE_MM) : 0
   const odpadMm = pocetTyci * DLZKA_TYCE_MM - potrebnaDlzkaMm
   return { pocetTyci, odpadMm }
 }
 
+function pocetARovnomernaMedzera(rozmer: number, sirka: number, medzera: number) {
+  const pocet = rozmer > 0 ? Math.max(0, Math.floor((rozmer + medzera) / (sirka + medzera))) : 0
+  const spotrebovanaSirka = pocet * sirka
+  const skutocnaMedzera = pocet > 0 ? (rozmer - spotrebovanaSirka) / (pocet + 1) : 0
+  return { pocet, skutocnaMedzera }
+}
+
 export function vypocitajBranku(vstup: GateInput): GateResult {
-  const { sirkaKridla, vyskaKridla, sirkaLamely, medzera, orientacia } = vstup
+  const { vyskaKridla, sirkaLamely, medzera } = vstup
   const povrch = najdiPovrch(vstup.povrch)
+  const jeBrana = vstup.typProduktu === "dvojkridlovaBrana"
+  const pocetKridiel = jeBrana ? 2 : 1
+  const sirkaKridla = jeBrana ? vstup.sirkaKridla / 2 : vstup.sirkaKridla
+  const orientacia = jeBrana ? "horizontalne" : vstup.orientacia
 
-  const vnutornaSirkaOtvoru = sirkaKridla - 2 * RAM_PROFIL_HRUBKA_MM
-  const vnutornaVyskaOtvoru = vyskaKridla - 2 * RAM_PROFIL_HRUBKA_MM
-
-  // Pri vertikálnych lamelách sa lamely radia po šírke a majú dĺžku = výška otvoru.
-  // Pri horizontálnych sa radia po výške a majú dĺžku = šírka otvoru.
+  const vnutornaSirkaOtvoru = Math.max(0, sirkaKridla - 2 * RAM_PROFIL_HRUBKA_MM)
+  const vnutornaVyskaOtvoru = Math.max(0, vyskaKridla - 2 * RAM_PROFIL_HRUBKA_MM)
   const vertikalne = orientacia === "vertikalne"
-  const rozmerNaRadenie = vertikalne ? vnutornaSirkaOtvoru : vnutornaVyskaOtvoru
-  const viditelnaDlzkaLamely = vertikalne ? vnutornaVyskaOtvoru : vnutornaSirkaOtvoru
-  // Lamela sa zasúva do rámu z každej strany — rezná dĺžka je preto dlhšia
-  // než viditeľný rozmer bránky.
-  const dlzkaLamely = viditelnaDlzkaLamely + 2 * LAMELA_ZASUNUTIE_MM
 
-  // Počet lamiel podľa zadanej medzery.
-  const pocetLamiel =
-    rozmerNaRadenie > 0 ? Math.max(0, Math.floor((rozmerNaRadenie + medzera) / (sirkaLamely + medzera))) : 0
+  let pocetLamiel = 0
+  let skutocnaMedzera = 0
+  let dlzkaLamely = 0
+  let lamelySpodnaCast: GateResult["lamelySpodnaCast"]
+  let lamelyHornaCast: GateResult["lamelyHornaCast"]
 
-  // Prepočet skutočnej medzery, aby vyšla rovnomerne (aj na krajoch).
-  const spotrebovanaSirkaLamiel = pocetLamiel * sirkaLamely
-  const skutocnaMedzera = pocetLamiel > 0 ? (rozmerNaRadenie - spotrebovanaSirkaLamiel) / (pocetLamiel + 1) : 0
+  if (jeBrana) {
+    // 250 mm je od zeme po SPODNÚ hranu priečky.
+    // Spodný priestor pre lamely preto začína za dolným profilom (50 mm)
+    // a končí pri spodnej hrane priečky (250 mm): 200 mm.
+    const spodnaVyska = Math.max(0, PRIECKA_VYSKA_OD_ZEME_MM - RAM_PROFIL_HRUBKA_MM)
+    // Priečka je vysoká 50 mm; nad ňou začína horná lamelová plocha.
+    const hornaVyska = Math.max(0, vnutornaVyskaOtvoru - spodnaVyska - RAM_PROFIL_HRUBKA_MM)
+    const spodna = pocetARovnomernaMedzera(spodnaVyska, sirkaLamely, medzera)
+    const horna = pocetARovnomernaMedzera(hornaVyska, sirkaLamely, medzera)
 
-  // --- Kusovník: Profil 50×60 (rám + stĺpiky) ---
-  // Zvislé profily rámu (bočnice): 2 ks v PLNEJ dĺžke = výška krídla.
-  //   Sedia na vonkajších rohoch, vodorovné kusy sa opierajú o ne.
-  // Vodorovné profily rámu (horná/dolná priečka): 2 ks KRATŠIE, vsadené
-  //   MEDZI zvislé kusy → rezná dĺžka = šírka krídla − 2×hrúbka profilu.
-  // Stĺpiky: 2 ks, dĺžka = výška krídla (zjednodušený predpoklad).
+    lamelySpodnaCast = { vyskaMm: spodnaVyska, pocet: spodna.pocet, skutocnaMedzera: spodna.skutocnaMedzera }
+    lamelyHornaCast = { vyskaMm: hornaVyska, pocet: horna.pocet, skutocnaMedzera: horna.skutocnaMedzera }
+    pocetLamiel = (spodna.pocet + horna.pocet) * pocetKridiel
+    skutocnaMedzera = (spodna.skutocnaMedzera + horna.skutocnaMedzera) / 2
+    dlzkaLamely = vnutornaSirkaOtvoru + 2 * LAMELA_ZASUNUTIE_MM
+  } else {
+    const rozmerNaRadenie = vertikalne ? vnutornaSirkaOtvoru : vnutornaVyskaOtvoru
+    const viditelnaDlzkaLamely = vertikalne ? vnutornaVyskaOtvoru : vnutornaSirkaOtvoru
+    const radenie = pocetARovnomernaMedzera(rozmerNaRadenie, sirkaLamely, medzera)
+    pocetLamiel = radenie.pocet
+    skutocnaMedzera = radenie.skutocnaMedzera
+    dlzkaLamely = viditelnaDlzkaLamely + 2 * LAMELA_ZASUNUTIE_MM
+  }
+
   const zvislyRamDlzka = vyskaKridla
   const vodorovnyRamDlzka = Math.max(0, sirkaKridla - 2 * RAM_PROFIL_HRUBKA_MM)
   const stlpikDlzka = vyskaKridla
-
-  const profilDlzkaMm = 2 * zvislyRamDlzka + 2 * vodorovnyRamDlzka + 2 * stlpikDlzka
+  const pocetZvislych = jeBrana ? 4 : 2
+  const pocetVodorovnych = jeBrana ? 4 : 2
+  const pocetStrednych = jeBrana ? 2 : 0
+  const profilDlzkaMm =
+    pocetZvislych * zvislyRamDlzka +
+    pocetVodorovnych * vodorovnyRamDlzka +
+    pocetStrednych * vodorovnyRamDlzka +
+    (jeBrana ? 0 : 2 * stlpikDlzka)
   const profilTyce = tyceAOdpad(profilDlzkaMm)
 
-  // --- Kusovník: Lamely ---
   const lamelyDlzkaMm = pocetLamiel * dlzkaLamely
   const lamelyTyce = tyceAOdpad(lamelyDlzkaMm)
+  const instalacnyKit = jeBrana ? CENNIK.instalacnyKitBrana : CENNIK.instalacnyKitBranka
 
   return {
-    vnutornaSirka: rozmerNaRadenie,
+    typProduktu: vstup.typProduktu,
+    sirkaKridla,
+    pocetKridiel,
+    vnutornaSirka: vnutornaSirkaOtvoru,
     dlzkaLamely,
     pocetLamiel,
     skutocnaMedzera,
+    lamelySpodnaCast,
+    lamelyHornaCast,
     profilRezy: {
-      zvislyRam: { nazov: "Zvislý rám (bočnica)", dlzkaMm: zvislyRamDlzka, pocet: 2 },
-      vodorovnyRam: { nazov: "Vodorovný rám (priečka)", dlzkaMm: vodorovnyRamDlzka, pocet: 2 },
-      stlpiky: { nazov: "Stĺpik", dlzkaMm: stlpikDlzka, pocet: 2 },
+      zvislyRam: { nazov: jeBrana ? "Zvislý rám — bočnice krídel" : "Zvislý rám (bočnica)", dlzkaMm: zvislyRamDlzka, pocet: pocetZvislych },
+      vodorovnyRam: { nazov: "Vodorovný rám — horný + dolný", dlzkaMm: vodorovnyRamDlzka, pocet: pocetVodorovnych },
+      ...(jeBrana ? { strednaPriecka: { nazov: `Priečka pohonu — ${PRIECKA_VYSKA_OD_ZEME_MM} mm od zeme`, dlzkaMm: vodorovnyRamDlzka, pocet: pocetStrednych } } : {}),
+      stlpiky: { nazov: "Stĺpik", dlzkaMm: stlpikDlzka, pocet: jeBrana ? 0 : 2 },
     },
     material: {
       profil: {
-        nazov: "Profil 50×60mm (rám + stĺpiky)",
+        nazov: "Profil 50×60mm (rám + priečka)",
         potrebnaDlzkaMm: profilDlzkaMm,
         potrebnaDlzkaM: profilDlzkaMm / 1000,
         pocetTyci: profilTyce.pocetTyci,
@@ -141,8 +179,8 @@ export function vypocitajBranku(vstup: GateInput): GateResult {
     cena: {
       profil: profilTyce.pocetTyci * CENNIK.profilKs,
       lamely: lamelyTyce.pocetTyci * CENNIK.lamelaKs,
-      instalacnyKit: CENNIK.instalacnyKit,
-      spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + CENNIK.instalacnyKit,
+      instalacnyKit,
+      spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + instalacnyKit,
     },
   }
 }
