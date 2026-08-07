@@ -253,11 +253,7 @@ export default function Page() {
             </div>
             <div className="rounded-md border border-border bg-muted p-2 md:p-4">
               <ZoomCanvas>
-                {jednaPolozka ? (
-                  <GatePreview vstup={aktivnaVypocitana.vstup} vysledok={aktivnaVypocitana.vysledok} kreslenie={true} onPridajPrekazku={otvorNavrh} onPresunPrekazku={presunPrekazku} />
-                ) : (
-                  <ScenaPreview polozky={vypocitane} prekazky={prekazky} kreslenie={true} onPridajPrekazku={otvorNavrh} onPresunPrekazku={presunPrekazku} aktivnaId={aktivnaId} onKlikPolozku={setAktivnaId} />
-                )}
+                <ScenaPreview polozky={vypocitane} prekazky={prekazky} kreslenie={true} onPridajPrekazku={otvorNavrh} onPresunPrekazku={presunPrekazku} aktivnaId={aktivnaId} onKlikPolozku={setAktivnaId} />
               </ZoomCanvas>
             </div>
 
@@ -279,7 +275,7 @@ export default function Page() {
                       <button
                         key={i}
                         type="button"
-                        onClick={() => zmenVstup({ ...aktivna.vstup, svetlaSirka: m.sirka })}
+                        onClick={() => zmenVstup({ ...aktivna.vstup, svetlaSirka: m.sirka, umiestnenieX: m.lavy.poziciaOdKraja + m.lavy.sirka })}
                         className="flex items-center justify-between gap-3 rounded-md border-2 border-input bg-background px-4 py-3 text-left text-sm font-semibold text-foreground hover:border-primary"
                       >
                         <span>„{m.lavy.nazov}" ↔ „{m.pravy.nazov}"</span>
@@ -287,6 +283,15 @@ export default function Page() {
                       </button>
                     ))}
                   </div>
+                  {aktivna.vstup.umiestnenieX !== undefined && (
+                    <button
+                      type="button"
+                      onClick={() => zmenVstup({ ...aktivna.vstup, umiestnenieX: undefined })}
+                      className="mt-2 text-xs font-semibold text-muted-foreground underline hover:text-foreground"
+                    >
+                      Zrušiť vloženie — vrátiť na automatické umiestnenie
+                    </button>
+                  )}
                 </div>
               )
             })()}

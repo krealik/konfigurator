@@ -155,6 +155,8 @@ export const DEFAULTS_POLOZKY = {
   kolajnica: true,
   /** Vybrané príslušenstvo k pohonu: id položky → množstvo (1 pre bežný checkbox, viac pri ovládačoch). */
   prislusenstvo: {} as Record<string, number>,
+  /** Pozícia ľavého okraja krídla v spoločnej scéne (mm) — undefined = appka ho rozmiestni sama vedľa ostatných. */
+  umiestnenieX: undefined as number | undefined,
 }
 
 export const DEFAULTS = {

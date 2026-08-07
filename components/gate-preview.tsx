@@ -5,6 +5,8 @@ import { RAM_PROFIL_HRUBKA_MM, PRIECKA_VYSKA_OD_ZEME_MM, FARBA_RAM, najdiPovrch,
 import type { GateInput, GateResult } from "@/lib/gate-calc"
 
 const CUT_COLOR = "#E63946"
+/** Predvolená hrúbka nakreslenej čiary (stĺp/stena) v mm — upraviteľná potom v popoveri. */
+export const HRUBKA_CIARY_MM = 100
 interface Props {
   vstup: GateInput
   vysledok: GateResult
@@ -200,15 +202,31 @@ function useKreslenieProekazky(
       setZivyBod2({ x, y })
       return
     }
-    const poziciaOdKraja = Math.round(Math.min(bod1.x, x))
-    const sirka = Math.round(Math.max(30, Math.abs(x - bod1.x)))
-    const yTop = Math.min(bod1.y, y)
-    const yBottom = Math.max(bod1.y, y)
-    const vyskaOd = Math.round(Math.max(0, vyskaKridla - yBottom))
-    const vyskaDo = Math.round(Math.max(vyskaOd + 30, vyskaKridla - yTop))
-    if ((Math.abs(x - bod1.x) > 10 || Math.abs(y - bod1.y) > 10) && onPridaj) {
+    // Podľa toho, ktorým smerom sa viac ťahalo, vznikne buď vodorovná čiara (šírka/stena pozdĺž frontu)
+    // alebo zvislá čiara (stĺp, hrúbka HRUBKA_CIARY_MM) — nie obdĺžnik kombinujúci oba rozmery naraz.
+    const dx = x - bod1.x
+    const dy = y - bod1.y
+    const jeVodorovna = Math.abs(dx) >= Math.abs(dy)
+    let poziciaOdKraja: number, sirka: number, vyskaOd: number, vyskaDo: number, nazov: string
+    if (jeVodorovna) {
+      poziciaOdKraja = Math.round(Math.min(bod1.x, x))
+      sirka = Math.round(Math.max(30, Math.abs(dx)))
+      const yStred = Math.max(0, vyskaKridla - bod1.y)
+      vyskaOd = Math.round(Math.max(0, yStred - HRUBKA_CIARY_MM / 2))
+      vyskaDo = Math.round(vyskaOd + HRUBKA_CIARY_MM)
+      nazov = "Stena"
+    } else {
+      poziciaOdKraja = Math.round(bod1.x - HRUBKA_CIARY_MM / 2)
+      sirka = HRUBKA_CIARY_MM
+      const yTop = Math.min(bod1.y, y)
+      const yBottom = Math.max(bod1.y, y)
+      vyskaOd = Math.round(Math.max(0, vyskaKridla - yBottom))
+      vyskaDo = Math.round(Math.max(vyskaOd + 30, vyskaKridla - yTop))
+      nazov = "Stĺp"
+    }
+    if ((Math.abs(dx) > 10 || Math.abs(dy) > 10) && onPridaj) {
       onPridaj(
-        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
+        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov, typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
         { x: e.clientX, y: e.clientY },
       )
     }
@@ -219,18 +237,36 @@ function useKreslenieProekazky(
   return { bod1, zivyBod2, onPointerDown, onPointerMove, onPointerUp, onClick }
 }
 
-/** Živý náhľad medzi prvým klikom a aktuálnou pozíciou kurzora — obdĺžnik zohľadňujúci aj šírku aj výšku, ukazuje sa kým sa čaká na druhý klik. */
+/** Živý náhľad medzi prvým klikom a aktuálnou pozíciou kurzora — čistá čiara (vodorovná alebo zvislá,
+ *  podľa toho, ktorým smerom sa práve ťahá viac), ukazuje sa kým sa čaká na druhý klik. */
 export function ZivaCiaraNahlad({ bod1, bod2, fontSize, stroke }: { bod1: { x: number; y: number }; bod2: { x: number; y: number }; fontSize: number; stroke: number }) {
-  const x = Math.min(bod1.x, bod2.x)
-  const y = Math.min(bod1.y, bod2.y)
-  const w = Math.abs(bod2.x - bod1.x)
-  const h = Math.abs(bod2.y - bod1.y)
+  const dx = bod2.x - bod1.x
+  const dy = bod2.y - bod1.y
+  const jeVodorovna = Math.abs(dx) >= Math.abs(dy)
+  const koniecX = jeVodorovna ? bod2.x : bod1.x
+  const koniecY = jeVodorovna ? bod1.y : bod2.y
+  const dlzka = Math.round(jeVodorovna ? Math.abs(dx) : Math.abs(dy))
+  const midX = (bod1.x + koniecX) / 2
+  const midY = (bod1.y + koniecY) / 2
   return (
     <g>
-      <rect x={x} y={y} width={w} height={h} fill="rgba(230,57,70,0.12)" stroke="#E63946" strokeWidth={stroke * 1.4} strokeDasharray={`${fontSize * 0.35} ${fontSize * 0.3}`} />
+      <line x1={bod1.x} y1={bod1.y} x2={koniecX} y2={koniecY} stroke="#E63946" strokeWidth={stroke * 1.6} strokeDasharray={`${fontSize * 0.35} ${fontSize * 0.3}`} />
       <circle cx={bod1.x} cy={bod1.y} r={fontSize * 0.28} fill="#E63946" />
-      <text x={x + w / 2} y={y - fontSize * 0.5} fontSize={fontSize} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#E63946" stroke="white" strokeWidth={fontSize * 0.22} paintOrder="stroke">
-        {Math.round(w)} × {Math.round(h)} mm
+      <circle cx={koniecX} cy={koniecY} r={fontSize * 0.2} fill="#E63946" />
+      <text
+        x={midX}
+        y={jeVodorovna ? midY - fontSize * 0.5 : midY}
+        fontSize={fontSize}
+        textAnchor="middle"
+        fontFamily="monospace"
+        fontWeight={700}
+        fill="#E63946"
+        stroke="white"
+        strokeWidth={fontSize * 0.22}
+        paintOrder="stroke"
+        transform={jeVodorovna ? undefined : `rotate(-90 ${midX} ${midY})`}
+      >
+        {dlzka} mm
       </text>
     </g>
   )

@@ -49,6 +49,8 @@ export interface GateInput {
   kolajnica: boolean
   /** Vybrané príslušenstvo k pohonu: id položky → množstvo. */
   prislusenstvo: Record<string, number>
+  /** Pozícia ľavého okraja krídla v spoločnej scéne (mm) — undefined = automatické rozmiestnenie. */
+  umiestnenieX?: number
 
   // Prekážky sú spoločné pre celú scénu — uchovávané v GateInput pre spätnú kompatibilitu.
   prekazky: Prekazka[]

@@ -3,7 +3,7 @@
 import { useRef, useState } from "react"
 import { RAM_PROFIL_HRUBKA_MM, PRIECKA_VYSKA_OD_ZEME_MM, FARBA_RAM, najdiPovrch, KLUCKA_VYSKA_MM, PANT_OD_KRAJA_MM, type Prekazka } from "@/lib/gate-config"
 import type { GateInput, GateResult } from "@/lib/gate-calc"
-import { ZivaCiaraNahlad } from "@/components/gate-preview"
+import { ZivaCiaraNahlad, HRUBKA_CIARY_MM } from "@/components/gate-preview"
 
 interface PolozkaVypocitana {
   id: string
@@ -236,18 +236,28 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
   const [zivyBod2, setZivyBod2] = useState<{ x: number; y: number } | null>(null)
   const potlacKlikRef = useRef(false)
 
-  // Rozmiestnenie produktov vedľa seba — každý má svoju šírku a začína za predchádzajúcim
+  // Rozmiestnenie produktov: ak má položka explicitne zvolené umiestnenieX (vložená do medzery
+  // medzi nakreslenými bodmi), použije sa presne to miesto. Inak appka rozmiestni vedľa seba sama.
   const pozicie: { id: string; offsetX: number; sirkaObjektu: number }[] = []
   let currentX = 0
   for (const pol of polozky) {
     const jeD = pol.vstup.typProduktu === "dvojkridlovaBrana"
     const sirkaObjektu = jeD ? pol.vysledok.sirkaKridla * 2 + pol.vstup.medzeraStred : pol.vysledok.sirkaKridla
-    pozicie.push({ id: pol.id, offsetX: currentX, sirkaObjektu })
-    currentX += sirkaObjektu + MEDZERA_MEDZI_PRODUKTMI
+    const offsetX = pol.vstup.umiestnenieX ?? currentX
+    pozicie.push({ id: pol.id, offsetX, sirkaObjektu })
+    if (pol.vstup.umiestnenieX === undefined) currentX += sirkaObjektu + MEDZERA_MEDZI_PRODUKTMI
   }
 
-  const totalSceneW = currentX - (polozky.length > 0 ? MEDZERA_MEDZI_PRODUKTMI : 0)
-  const maxH = Math.max(...polozky.map((p) => p.vysledok.vyskaKridla), 1000)
+  // Rozsah scény musí zahŕňať aj nakreslené prekážky (môžu siahať mimo rozmiestnených produktov).
+  const vsetkyXOd = [0, ...pozicie.map((p) => p.offsetX), ...prekazky.map((p) => p.poziciaOdKraja)]
+  const vsetkyXDo = [
+    ...pozicie.map((p) => p.offsetX + p.sirkaObjektu),
+    ...prekazky.map((p) => p.poziciaOdKraja + p.sirka),
+  ]
+  const minX = Math.min(0, ...vsetkyXOd)
+  const maxX = Math.max(...vsetkyXDo, minX + 100)
+  const totalSceneW = maxX - minX
+  const maxH = Math.max(...polozky.map((p) => p.vysledok.vyskaKridla), ...prekazky.map((p) => p.vyskaDo), 1000)
 
   const scale = Math.max(totalSceneW, maxH, 1)
   const fontSize = clamp(scale / 26, 28, 52)
@@ -268,7 +278,7 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
 
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (!kreslenie || !svgRef.current) return
-    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
+    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL - minX, marginT)
     const zasiahnuta = onPresunPrekazku ? najdiPodBodom(x, y) : undefined
     if (zasiahnuta) {
       ;(e.target as Element).setPointerCapture?.(e.pointerId)
@@ -279,7 +289,7 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
 
   function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
     if (!kreslenie || !svgRef.current) return
-    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
+    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL - minX, marginT)
     if (presuvam && onPresunPrekazku) {
       const dx = Math.round(x - presuvam.startX)
       const dy = Math.round(y - presuvam.startY)
@@ -303,21 +313,35 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
       potlacKlikRef.current = false
       return
     }
-    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
+    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL - minX, marginT)
     if (!bod1) {
       setBod1({ x, y })
       setZivyBod2({ x, y })
       return
     }
-    const poziciaOdKraja = Math.round(Math.min(bod1.x, x))
-    const sirka = Math.round(Math.max(30, Math.abs(x - bod1.x)))
-    const yTop = Math.min(bod1.y, y)
-    const yBottom = Math.max(bod1.y, y)
-    const vyskaOd = Math.round(Math.max(0, maxH - yBottom))
-    const vyskaDo = Math.round(Math.max(vyskaOd + 30, maxH - yTop))
-    if ((Math.abs(x - bod1.x) > 10 || Math.abs(y - bod1.y) > 10) && onPridajPrekazku) {
+    const dx = x - bod1.x
+    const dy = y - bod1.y
+    const jeVodorovna = Math.abs(dx) >= Math.abs(dy)
+    let poziciaOdKraja: number, sirka: number, vyskaOd: number, vyskaDo: number, nazov: string
+    if (jeVodorovna) {
+      poziciaOdKraja = Math.round(Math.min(bod1.x, x))
+      sirka = Math.round(Math.max(30, Math.abs(dx)))
+      const yStred = Math.max(0, maxH - bod1.y)
+      vyskaOd = Math.round(Math.max(0, yStred - HRUBKA_CIARY_MM / 2))
+      vyskaDo = Math.round(vyskaOd + HRUBKA_CIARY_MM)
+      nazov = "Stena"
+    } else {
+      poziciaOdKraja = Math.round(bod1.x - HRUBKA_CIARY_MM / 2)
+      sirka = HRUBKA_CIARY_MM
+      const yTop = Math.min(bod1.y, y)
+      const yBottom = Math.max(bod1.y, y)
+      vyskaOd = Math.round(Math.max(0, maxH - yBottom))
+      vyskaDo = Math.round(Math.max(vyskaOd + 30, maxH - yTop))
+      nazov = "Stĺp"
+    }
+    if ((Math.abs(dx) > 10 || Math.abs(dy) > 10) && onPridajPrekazku) {
       onPridajPrekazku(
-        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
+        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov, typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
         { x: e.clientX, y: e.clientY },
       )
     }
@@ -330,7 +354,7 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
     // Zisti na ktorú položku sa kliklo
     const svg = svgRef.current
     if (!svg) return
-    const { x, y } = bodDoMm(svg, e.clientX, e.clientY, marginL, marginT)
+    const { x, y } = bodDoMm(svg, e.clientX, e.clientY, marginL - minX, marginT)
     for (const poz of pozicie) {
       const pol = polozky.find((p) => p.id === poz.id)
       if (!pol) continue
@@ -358,9 +382,9 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
         <marker id="scArrowStart" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6" fill="none" stroke="#383E42" strokeWidth="1.4" /></marker>
         <marker id="scArrowEnd" markerWidth="8" markerHeight="8" refX="2" refY="3" orient="auto"><path d="M2,0 L8,3 L2,6" fill="none" stroke="#383E42" strokeWidth="1.4" /></marker>
       </defs>
-      <g transform={`translate(${marginL} ${marginT})`}>
+      <g transform={`translate(${marginL - minX} ${marginT})`}>
         {/* Zemná čiara */}
-        <line x1={-marginL * 0.5} y1={maxH} x2={totalSceneW + marginR * 0.5} y2={maxH} stroke="#ccc" strokeWidth={stroke} />
+        <line x1={minX - marginL * 0.5} y1={maxH} x2={maxX + marginR * 0.5} y2={maxH} stroke="#ccc" strokeWidth={stroke} />
 
         {/* Prekážky — spoločné pre celú scénu */}
         <PrekazkyLayer prekazky={prekazky} maxH={maxH} fontSize={fontSize} stroke={stroke} />
@@ -382,7 +406,7 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
         {bod1 && zivyBod2 && <ZivaCiaraNahlad bod1={bod1} bod2={zivyBod2} fontSize={fontSize} stroke={stroke} />}
         {/* Legenda "klikni na produkt" keď nie je kreslenie */}
         {!kreslenie && polozky.length > 1 && (
-          <text x={totalSceneW / 2} y={maxH + fontSize * 1.8} fontSize={fontSize * 0.6} textAnchor="middle" fontFamily="monospace" fill="#9AA0A6">
+          <text x={(minX + maxX) / 2} y={maxH + fontSize * 1.8} fontSize={fontSize * 0.6} textAnchor="middle" fontFamily="monospace" fill="#9AA0A6">
             Klikni na produkt pre jeho detail
           </text>
         )}
