@@ -6,6 +6,8 @@ import type { GateInput } from "@/lib/gate-calc"
 import { GateObstacles } from "@/components/gate-obstacles"
 
 interface Props {
+  prekazky: Prekazka[]
+  onZmenPrekazky: (p: Prekazka[]) => void
   vstup: GateInput
   onChange: (vstup: GateInput) => void
 }
@@ -91,7 +93,8 @@ function SectionTitle({ children }: { children: ReactNode }) {
   return <h3 className="text-sm font-bold uppercase tracking-wide text-primary">{children}</h3>
 }
 
-export function GateForm({ vstup, onChange }: Props) {
+export function GateForm(props: Props) {
+  const { vstup, onChange } = props
   const jeBrana = vstup.typProduktu === "dvojkridlovaBrana"
   const jePosuvna = vstup.typProduktu === "posuvnaBrana"
   const jeBranka = !jeBrana && !jePosuvna
@@ -235,8 +238,8 @@ export function GateForm({ vstup, onChange }: Props) {
       <div className="flex flex-col gap-3 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
         <SectionTitle>Prekážky na mieste</SectionTitle>
         <GateObstacles
-          prekazky={vstup.prekazky}
-          onChange={(prekazky: Prekazka[]) => onChange({ ...vstup, prekazky })}
+          prekazky={props.prekazky}
+          onChange={props.onZmenPrekazky}
         />
       </div>
 

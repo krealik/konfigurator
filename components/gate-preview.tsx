@@ -69,6 +69,16 @@ function PrekazkyLayer({ prekazky, vyskaKridla }: { prekazky: Prekazka[]; vyskaK
       {prekazky.map((p) => {
         const y = vyskaKridla - p.vyskaDo
         const h = Math.max(0, p.vyskaDo - p.vyskaOd)
+        if ((p.typ ?? "obdlznik") === "ciara") {
+          // Čiara (stena, stĺp) — zvislá čiara s hrúbkou
+          const cx = p.poziciaOdKraja + p.sirka / 2
+          return (
+            <g key={p.id}>
+              <line x1={cx} y1={y} x2={cx} y2={y + h} stroke="#5B6166" strokeWidth={Math.max(p.sirka, 3)} />
+              <text x={cx} y={y - fontSize * 0.4} fontSize={fontSize} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">{p.nazov}</text>
+            </g>
+          )
+        }
         return (
           <g key={p.id}>
             <rect x={p.poziciaOdKraja} y={y} width={p.sirka} height={h} fill="rgba(91,97,102,0.2)" stroke="#5B6166" strokeWidth={2.5} strokeDasharray="10 7" />
@@ -133,7 +143,7 @@ function useKreslenieProekazky(
       const yBottom = Math.max(kreslim.y, kreslim.y + kreslim.h)
       const vyskaOd = Math.round(Math.max(0, vyskaKridla - yBottom))
       const vyskaDo = Math.round(Math.max(0, vyskaKridla - yTop))
-      onPridaj({ id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", poziciaOdKraja, sirka, vyskaOd, vyskaDo })
+      onPridaj({ id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo })
     }
     setKreslim(null)
   }

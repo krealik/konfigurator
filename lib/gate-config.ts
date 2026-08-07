@@ -30,17 +30,20 @@ export type TypProduktu = "branka" | "dvojkridlovaBrana" | "posuvnaBrana"
 /** Strana — použitá pre smer otvárania (bránka) aj stranu posunu (posúvna brána). */
 export type Strana = "vlavo" | "vpravo"
 
+/** Typ prekážky: obdĺžnik (murovaný stĺp, skriňa…) alebo čiara (stena domu, okrúhly stĺp…). */
+export type TypPrekazky = "obdlznik" | "ciara"
+
 /**
- * Prekážka na mieste osadenia (stĺp, stena domu, elektroskriňa…) — jednoduchý obdĺžnik
- * zakreslený v čelnom pohľade. Slúži len ako vizuálna referencia v náhľade, appka
- * nekontroluje kolízie s krídlom automaticky.
+ * Prekážka na mieste osadenia (stĺp, stena domu, elektroskriňa…).
+ * Môže byť obdĺžnik alebo čiara (zvislá stena/stĺp).
  */
 export interface Prekazka {
   id: string
   nazov: string
+  typ: TypPrekazky
   /** Vzdialenosť ľavého okraja prekážky od ľavého okraja zamerania (mm). */
   poziciaOdKraja: number
-  /** Šírka prekážky (mm). */
+  /** Šírka prekážky (mm) — pri type "ciara" je to hrúbka čiary (napr. priemer stĺpa). */
   sirka: number
   /** Spodná hrana prekážky, výška od zeme (mm). */
   vyskaOd: number
@@ -48,26 +51,29 @@ export interface Prekazka {
   vyskaDo: number
 }
 
-export const DEFAULTS = {
+/** Jedna položka v scéne (jeden produkt na danej zákazke). */
+export interface PolozkaSceny {
+  id: string
+  /** Horizontálna pozícia ľavého okraja produktu v spoločnej scéne (mm). */
+  poziciaX: number
+}
+
+export const DEFAULTS_POLOZKY = {
   typProduktu: "branka" as TypProduktu,
   nazovZakaznika: "",
 
   // --- Zameranie na mieste ---
-  // Jednokrídlová bránka:
   svetlaSirka: 1300,
   vola: 100,
-  smerOtvarania: "vlavo" as Strana, // strana, na ktorej sú panty
+  smerOtvarania: "vlavo" as Strana,
 
-  // Dvojkrídlová brána:
   volaVlavo: 60,
   volaVpravo: 60,
   medzeraStred: 20,
 
-  // Posúvna brána:
   presah: 500,
   stranaPosunu: "vpravo" as Strana,
 
-  // Spoločné — výška:
   vyskaPodmurovky: 0,
   medzeraPodBranou: 100,
   celkovaVyska: 1600,
@@ -76,7 +82,10 @@ export const DEFAULTS = {
   medzera: 30,
   povrch: "antracit" as PovrchId,
   orientacia: "vertikalne" as Orientacia,
+}
 
+export const DEFAULTS = {
+  ...DEFAULTS_POLOZKY,
   // --- Prekážky na mieste (stĺp, stena, elektroskriňa…) ---
   prekazky: [] as Prekazka[],
 }

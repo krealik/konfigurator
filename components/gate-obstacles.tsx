@@ -1,6 +1,6 @@
 "use client"
 
-import type { Prekazka } from "@/lib/gate-config"
+import type { Prekazka, TypPrekazky } from "@/lib/gate-config"
 
 interface Props {
   prekazky: Prekazka[]
@@ -34,7 +34,8 @@ export function GateObstacles({ prekazky, onChange }: Props) {
   return (
     <div className="flex flex-col gap-3">
       <p className="text-sm text-muted-foreground">
-        Prekážky (stĺp, stena, elektroskriňa…) nakresli priamo v náhľade vpravo tlačidlom „Kresliť prekážky“. Tu si ich vieš doladiť na presné čísla alebo zmazať.
+        Nakresli priamo v náhľade tlačidlom „Kresliť prekážky". Tu si ich doladíš na presné čísla alebo zmažeš.
+        Prekážky sú <strong>spoločné pre všetky produkty</strong> na tejto zákazke.
       </p>
 
       {prekazky.length === 0 ? (
@@ -60,11 +61,25 @@ export function GateObstacles({ prekazky, onChange }: Props) {
                   Zmazať
                 </button>
               </div>
+              {/* Typ prekážky */}
+              <div className="mb-2 grid grid-cols-2 gap-2">
+                {(["obdlznik", "ciara"] as TypPrekazky[]).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => uprav(p.id, { typ: t })}
+                    className={"rounded border-2 py-1.5 text-xs font-bold transition-colors " +
+                      ((p.typ ?? "obdlznik") === t ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}
+                  >
+                    {t === "obdlznik" ? "⬜ Obdĺžnik" : "⏐ Čiara / stena"}
+                  </button>
+                ))}
+              </div>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <MiniField label="Pozícia od kraja" value={p.poziciaOdKraja} onChange={(v) => uprav(p.id, { poziciaOdKraja: v })} />
-                <MiniField label="Šírka" value={p.sirka} onChange={(v) => uprav(p.id, { sirka: v })} />
-                <MiniField label="Výška od" value={p.vyskaOd} onChange={(v) => uprav(p.id, { vyskaOd: v })} />
-                <MiniField label="Výška do" value={p.vyskaDo} onChange={(v) => uprav(p.id, { vyskaDo: v })} />
+                <MiniField label={p.typ === "ciara" ? "Hrúbka / priemer" : "Šírka"} value={p.sirka} onChange={(v) => uprav(p.id, { sirka: v })} />
+                <MiniField label="Výška od (mm)" value={p.vyskaOd} onChange={(v) => uprav(p.id, { vyskaOd: v })} />
+                <MiniField label="Výška do (mm)" value={p.vyskaDo} onChange={(v) => uprav(p.id, { vyskaDo: v })} />
               </div>
             </div>
           ))}

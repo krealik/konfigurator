@@ -18,21 +18,17 @@ export interface GateInput {
   nazovZakaznika: string
 
   // --- Zameranie na mieste ---
-  // Jednokrídlová bránka:
   svetlaSirka: number
   vola: number
   smerOtvarania: Strana
 
-  // Dvojkrídlová brána:
   volaVlavo: number
   volaVpravo: number
   medzeraStred: number
 
-  // Posúvna brána:
   presah: number
   stranaPosunu: Strana
 
-  // Spoločné — výška:
   vyskaPodmurovky: number
   medzeraPodBranou: number
   celkovaVyska: number
@@ -42,22 +38,16 @@ export interface GateInput {
   povrch: PovrchId
   orientacia: Orientacia
 
-  // --- Prekážky na mieste ---
+  // Prekážky sú spoločné pre celú scénu — uchovávané v GateInput pre spätnú kompatibilitu.
   prekazky: Prekazka[]
 }
 
 export interface ZameranieVysledok {
-  /** Šírka jedného krídla (pri dvojkrídlovej už delená na 2, pri posúvnej vrátane presahu). */
   sirkaKridla: number
   vyskaKridla: number
   varovania: string[]
 }
 
-/**
- * Prepočíta údaje zamerané na mieste (svetlá šírka otvoru, vôle, výška podmurovky…)
- * na rozmer krídla, ktorý potrebuje existujúca výrobná logika (vypocitajBranku).
- * Táto vrstva beží PRED vypocitajBranku a nič v nej nemení.
- */
 export function vypocitajZZamerania(vstup: GateInput): ZameranieVysledok {
   const varovania: string[] = []
 
@@ -128,7 +118,6 @@ export interface GateResult {
     lamely: MaterialPolozka
   }
   cena: CenovaKalkulacia
-  /** Priestor, ktorý krídlo potrebuje pri otvorení (krídlová) alebo pri zasunutí (posúvna). */
   priestorPriOtvoreni: number
   smerOtvarania?: Strana
   stranaPosunu?: Strana
@@ -155,7 +144,6 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
   const jeBrana = vstup.typProduktu === "dvojkridlovaBrana"
   const jePosuvna = vstup.typProduktu === "posuvnaBrana"
   const pocetKridiel = jeBrana ? 2 : 1
-  // Dvojkrídlová aj posúvna majú pevnú (horizontálnu) orientáciu lamiel — bránka je voliteľná.
   const orientacia = jeBrana || jePosuvna ? "horizontalne" : vstup.orientacia
 
   const vnutornaSirkaOtvoru = Math.max(0, sirkaKridla - 2 * RAM_PROFIL_HRUBKA_MM)
@@ -169,11 +157,7 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
   let lamelyHornaCast: GateResult["lamelyHornaCast"]
 
   if (jeBrana) {
-    // 250 mm je od zeme po SPODNÚ hranu priečky.
-    // Spodný priestor pre lamely preto začína za dolným profilom (50 mm)
-    // a končí pri spodnej hrane priečky (250 mm): 200 mm.
     const spodnaVyska = Math.max(0, PRIECKA_VYSKA_OD_ZEME_MM - RAM_PROFIL_HRUBKA_MM)
-    // Priečka je vysoká 50 mm; nad ňou začína horná lamelová plocha.
     const hornaVyska = Math.max(0, vnutornaVyskaOtvoru - spodnaVyska - RAM_PROFIL_HRUBKA_MM)
     const spodna = pocetARovnomernaMedzera(spodnaVyska, sirkaLamely, medzera)
     const horna = pocetARovnomernaMedzera(hornaVyska, sirkaLamely, medzera)
@@ -198,7 +182,6 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
   const pocetZvislych = jeBrana ? 4 : 2
   const pocetVodorovnych = jeBrana ? 4 : 2
   const pocetStrednych = jeBrana ? 2 : 0
-  // Stĺpiky: bránka aj posúvna majú 2 (samostatné voľne stojace), dvojkrídlová 0 (sú súčasťou oboch krídel).
   const profilDlzkaMm =
     pocetZvislych * zvislyRamDlzka +
     pocetVodorovnych * vodorovnyRamDlzka +
@@ -257,7 +240,6 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
       instalacnyKit,
       spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + instalacnyKit,
     },
-    // Priestor, ktorý krídlo zaberie pri otvorení na 90° (krídlová) alebo pri zasunutí (posúvna).
     priestorPriOtvoreni: sirkaKridla,
     smerOtvarania: !jeBrana && !jePosuvna ? vstup.smerOtvarania : undefined,
     stranaPosunu: jePosuvna ? vstup.stranaPosunu : undefined,
