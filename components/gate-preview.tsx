@@ -1,6 +1,6 @@
 "use client"
 
-import { RAM_PROFIL_HRUBKA_MM, PRIECKA_VYSKA_OD_ZEME_MM, FARBA_RAM, najdiPovrch, KLUCKA_VYSKA_MM, PANT_OD_KRAJA_MM } from "@/lib/gate-config"
+import { RAM_PROFIL_HRUBKA_MM, PRIECKA_VYSKA_OD_ZEME_MM, FARBA_RAM, najdiPovrch, KLUCKA_VYSKA_MM, PANT_OD_KRAJA_MM, type Prekazka } from "@/lib/gate-config"
 import type { GateInput, GateResult } from "@/lib/gate-calc"
 
 const CUT_COLOR = "#E63946"
@@ -48,6 +48,32 @@ function DimArrowDefs() {
   </>
 }
 
+/**
+ * Vykreslí zakreslené prekážky (stĺp, stena, elektroskriňa…) ako sivé referenčné bloky
+ * v pozadí náhľadu — len orientačne, appka kolízie automaticky nekontroluje.
+ * Súradnice prekážok sú od ľavého okraja zamerania a od zeme; vyskaKridla určuje, kde je zem (Y=0 je vrch).
+ */
+function PrekazkyLayer({ prekazky, vyskaKridla }: { prekazky: Prekazka[]; vyskaKridla: number }) {
+  if (!prekazky || prekazky.length === 0) return null
+  const fontSize = clamp(vyskaKridla / 42, 20, 34)
+  return (
+    <g>
+      {prekazky.map((p) => {
+        const y = vyskaKridla - p.vyskaDo
+        const h = Math.max(0, p.vyskaDo - p.vyskaOd)
+        return (
+          <g key={p.id}>
+            <rect x={p.poziciaOdKraja} y={y} width={p.sirka} height={h} fill="rgba(91,97,102,0.2)" stroke="#5B6166" strokeWidth={2.5} strokeDasharray="10 7" />
+            <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">
+              {p.nazov}
+            </text>
+          </g>
+        )
+      })}
+    </g>
+  )
+}
+
 export function GatePreview({ vstup, vysledok }: Props) {
   if (vstup.typProduktu === "dvojkridlovaBrana") return <DvojkridlovaPreview vstup={vstup} vysledok={vysledok} />
   if (vstup.typProduktu === "posuvnaBrana") return <PosuvnaPreview vstup={vstup} vysledok={vysledok} />
@@ -82,6 +108,7 @@ function BrankaPreview({ vstup, vysledok }: Props) {
   return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad bránky ${sirkaKridla} × ${vyskaKridla} mm`}>
     <defs><DimArrowDefs /><linearGradient id="drevo" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba}/><stop offset="45%" stopColor="rgba(255,255,255,0.18)"/><stop offset="55%" stopColor={povrch.farba}/><stop offset="100%" stopColor="rgba(0,0,0,0.22)"/></linearGradient></defs>
     <g transform={`translate(${marginL} ${marginT})`}>
+      <PrekazkyLayer prekazky={vstup.prekazky} vyskaKridla={vyskaKridla} />
       <rect width={sirkaKridla} height={vyskaKridla} fill="white" />
       {lamely.map((pos, i) => <rect key={i} x={vert ? pos : innerX} y={vert ? innerY : pos} width={vert ? sirkaLamely : innerW} height={vert ? innerH : sirkaLamely} fill={fill} stroke="rgba(0,0,0,.18)" strokeWidth={stroke*.5}/>) }
       <g fill={FARBA_RAM}><rect width={ram} height={vyskaKridla}/><rect x={sirkaKridla-ram} width={ram} height={vyskaKridla}/><rect x={ram} width={sirkaKridla-2*ram} height={ram}/><rect x={ram} y={vyskaKridla-ram} width={sirkaKridla-2*ram} height={ram}/></g>
@@ -184,6 +211,7 @@ function DvojkridlovaPreview({ vstup, vysledok }: Props) {
   return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad dvojkrídlovej brány ${totalW} × ${h} mm`}>
     <defs><DimArrowDefs /><linearGradient id="drevoBig" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba} /><stop offset="45%" stopColor="rgba(255,255,255,0.18)" /><stop offset="55%" stopColor={povrch.farba} /><stop offset="100%" stopColor="rgba(0,0,0,0.22)" /></linearGradient></defs>
     <g transform={`translate(${marginL} ${marginT})`}>
+      <PrekazkyLayer prekazky={vstup.prekazky} vyskaKridla={h} />
       {wing(0, 0)}{wing(wingW + vstup.medzeraStred, 1)}
       {/* Medzera v strede (styk dvoch krídel v strede brány) — dve čiary s medzerou namiesto jednej. */}
       <line x1={wingW} y1={0} x2={wingW} y2={h} stroke="rgba(0,0,0,.35)" strokeWidth={stroke} />
@@ -248,6 +276,7 @@ function PosuvnaPreview({ vstup, vysledok }: Props) {
   return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad posúvnej brány ${sirkaKridla} × ${vyskaKridla} mm`}>
     <defs><DimArrowDefs /><linearGradient id="drevoPosuv" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba}/><stop offset="45%" stopColor="rgba(255,255,255,0.18)"/><stop offset="55%" stopColor={povrch.farba}/><stop offset="100%" stopColor="rgba(0,0,0,0.22)"/></linearGradient></defs>
     <g transform={`translate(${marginL} ${marginT})`}>
+      <PrekazkyLayer prekazky={vstup.prekazky} vyskaKridla={vyskaKridla} />
       <rect width={sirkaKridla} height={vyskaKridla} fill="white" />
       {lamely.map((pos, i) => <rect key={i} x={innerX} y={pos} width={innerW} height={sirkaLamely} fill={fill} stroke="rgba(0,0,0,.18)" strokeWidth={stroke*.5}/>)}
       <g fill={FARBA_RAM}><rect width={ram} height={vyskaKridla}/><rect x={sirkaKridla-ram} width={ram} height={vyskaKridla}/><rect x={ram} width={sirkaKridla-2*ram} height={ram}/><rect x={ram} y={vyskaKridla-ram} width={sirkaKridla-2*ram} height={ram}/></g>

@@ -1,8 +1,9 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { SIRKY_LAMIEL_MM, POVRCHY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana } from "@/lib/gate-config"
+import { SIRKY_LAMIEL_MM, POVRCHY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana, type Prekazka } from "@/lib/gate-config"
 import type { GateInput } from "@/lib/gate-calc"
+import { GateObstacles } from "@/components/gate-obstacles"
 
 interface Props {
   vstup: GateInput
@@ -227,6 +228,17 @@ export function GateForm({ vstup, onChange }: Props) {
           suffix="mm"
           hint="od zeme, vrátane podmurovky aj medzery pod bránou"
           onChange={(v) => onChange({ ...vstup, celkovaVyska: v })}
+        />
+      </div>
+
+      {/* --- Prekážky na mieste --- */}
+      <div className="flex flex-col gap-3 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
+        <SectionTitle>Prekážky na mieste</SectionTitle>
+        <GateObstacles
+          prekazky={vstup.prekazky}
+          sirkaPriestoru={vstup.svetlaSirka}
+          vyskaPriestoru={vstup.celkovaVyska}
+          onChange={(prekazky: Prekazka[]) => onChange({ ...vstup, prekazky })}
         />
       </div>
 
