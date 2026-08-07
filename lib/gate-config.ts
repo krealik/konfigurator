@@ -30,6 +30,24 @@ export type TypProduktu = "branka" | "dvojkridlovaBrana" | "posuvnaBrana"
 /** Strana — použitá pre smer otvárania (bránka) aj stranu posunu (posúvna brána). */
 export type Strana = "vlavo" | "vpravo"
 
+/**
+ * Prekážka na mieste osadenia (stĺp, stena domu, elektroskriňa…) — jednoduchý obdĺžnik
+ * zakreslený v čelnom pohľade. Slúži len ako vizuálna referencia v náhľade, appka
+ * nekontroluje kolízie s krídlom automaticky.
+ */
+export interface Prekazka {
+  id: string
+  nazov: string
+  /** Vzdialenosť ľavého okraja prekážky od ľavého okraja zamerania (mm). */
+  poziciaOdKraja: number
+  /** Šírka prekážky (mm). */
+  sirka: number
+  /** Spodná hrana prekážky, výška od zeme (mm). */
+  vyskaOd: number
+  /** Horná hrana prekážky, výška od zeme (mm). */
+  vyskaDo: number
+}
+
 export const DEFAULTS = {
   typProduktu: "branka" as TypProduktu,
   nazovZakaznika: "",
@@ -58,6 +76,9 @@ export const DEFAULTS = {
   medzera: 30,
   povrch: "antracit" as PovrchId,
   orientacia: "vertikalne" as Orientacia,
+
+  // --- Prekážky na mieste (stĺp, stena, elektroskriňa…) ---
+  prekazky: [] as Prekazka[],
 }
 
 export const RAM_PROFIL_NAZOV = "Profil 50×60mm (rám + stĺpiky)"

@@ -10,6 +10,7 @@ import {
   type Orientacia,
   type TypProduktu,
   type Strana,
+  type Prekazka,
 } from "./gate-config"
 
 export interface GateInput {
@@ -40,6 +41,9 @@ export interface GateInput {
   medzera: number
   povrch: PovrchId
   orientacia: Orientacia
+
+  // --- Prekážky na mieste ---
+  prekazky: Prekazka[]
 }
 
 export interface ZameranieVysledok {
