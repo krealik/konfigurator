@@ -49,19 +49,22 @@ function DimArrowDefs() {
 }
 
 export function GatePreview({ vstup, vysledok }: Props) {
-  return vstup.typProduktu === "dvojkridlovaBrana"
-    ? <DvojkridlovaPreview vstup={vstup} vysledok={vysledok} />
-    : <BrankaPreview vstup={vstup} vysledok={vysledok} />
+  if (vstup.typProduktu === "dvojkridlovaBrana") return <DvojkridlovaPreview vstup={vstup} vysledok={vysledok} />
+  if (vstup.typProduktu === "posuvnaBrana") return <PosuvnaPreview vstup={vstup} vysledok={vysledok} />
+  return <BrankaPreview vstup={vstup} vysledok={vysledok} />
 }
 
 function BrankaPreview({ vstup, vysledok }: Props) {
-  const { sirkaKridla, vyskaKridla, sirkaLamely } = vstup
+  const sirkaKridla = vysledok.sirkaKridla, vyskaKridla = vysledok.vyskaKridla
+  const { sirkaLamely } = vstup
   const povrch = najdiPovrch(vstup.povrch)
   const ram = RAM_PROFIL_HRUBKA_MM
   const innerX = ram, innerY = ram, innerW = Math.max(0, sirkaKridla - 2 * ram), innerH = Math.max(0, vyskaKridla - 2 * ram)
   const vert = vstup.orientacia === "vertikalne"
-  // Oblúk otvorenia potrebuje priestor napravo od bránky — margin je preto väčší vpravo.
-  const marginL = 300, marginT = 260, marginR = Math.max(340, sirkaKridla * 0.55), marginB = 320
+  // Panty a kľučka sa umiestňujú podľa smeru otvárania (bez SVG mirror transformu, kvôli čitateľnosti textov).
+  const pantyVlavo = vstup.smerOtvarania !== "vpravo"
+  // Oblúk otvorenia zasahuje pod bránku (nie do strany), takže margin je len mierne asymetrický kvôli kovaniu.
+  const marginL = 300, marginT = 260, marginR = 300, marginB = 320
   const vbW = sirkaKridla + marginL + marginR, vbH = vyskaKridla + marginT + marginB
   // Rozmerovo nezávislé veľkosti (v jednotkách viewBoxu, ktorý sleduje mm) — s dolnými/hornými limitmi,
   // aby popisky a značky ostali čitateľné pri malých aj veľkých bránach.
@@ -90,25 +93,28 @@ function BrankaPreview({ vstup, vysledok }: Props) {
         <line x1={sirkaKridla-ram} y1={0} x2={sirkaKridla-ram} y2={vyskaKridla} />
       </g>
 
-      {/* Panty — na ľavej bočnici, výrazné, s pevnou minimálnou veľkosťou. */}
+      {/* Panty — na strane podľa smeru otvárania, výrazné, s pevnou minimálnou veľkosťou. */}
       {[
         { y: vyskaKridla - PANT_OD_KRAJA_MM, label: `pánt ${PANT_OD_KRAJA_MM} mm od spodku` },
         { y: PANT_OD_KRAJA_MM, label: `pánt ${PANT_OD_KRAJA_MM} mm od vrchu` },
       ].map((p) => (
         <g key={p.label}>
-          <rect x={-hwSize*0.15} y={p.y-hwSize*0.55} width={hwSize*0.9} height={hwSize*1.1} rx={hwSize*0.12} fill="#8B8F93" stroke="#2A2A2A" strokeWidth={stroke*0.6} />
-          <circle cx={hwSize*0.3} cy={p.y} r={hwSize*0.13} fill="#2A2A2A" />
+          <rect x={pantyVlavo ? -hwSize*0.15 : sirkaKridla - hwSize*0.75} y={p.y-hwSize*0.55} width={hwSize*0.9} height={hwSize*1.1} rx={hwSize*0.12} fill="#8B8F93" stroke="#2A2A2A" strokeWidth={stroke*0.6} />
+          <circle cx={pantyVlavo ? hwSize*0.3 : sirkaKridla - hwSize*0.3} cy={p.y} r={hwSize*0.13} fill="#2A2A2A" />
         </g>
       ))}
 
-      {/* Kľučka — na pravej bočnici, výška 1050 mm od spodku. */}
+      {/* Kľučka — na opačnej bočnici ako panty, výška 1050 mm od spodku. */}
       {(() => {
         const y = vyskaKridla - KLUCKA_VYSKA_MM
         const plateW = hwSize*0.75, plateH = hwSize*1.9, handleLen = hwSize*1.3
+        const plateX = pantyVlavo ? sirkaKridla-ram-plateW*0.4 : ram-plateW*0.6
+        const handleX = pantyVlavo ? plateX - handleLen : plateX + plateW
+        const knobX = pantyVlavo ? sirkaKridla-ram : ram
         return <g>
-          <rect x={sirkaKridla-ram-plateW*0.4} y={y-plateH/2} width={plateW} height={plateH} rx={hwSize*0.1} fill="#C9CCCE" stroke="#2A2A2A" strokeWidth={stroke*0.6} />
-          <rect x={sirkaKridla-ram-plateW*0.4-handleLen} y={y-hwSize*0.13} width={handleLen} height={hwSize*0.26} rx={hwSize*0.08} fill="#8B8F93" stroke="#2A2A2A" strokeWidth={stroke*0.5} />
-          <circle cx={sirkaKridla-ram} cy={y} r={hwSize*0.11} fill="#2A2A2A" />
+          <rect x={plateX} y={y-plateH/2} width={plateW} height={plateH} rx={hwSize*0.1} fill="#C9CCCE" stroke="#2A2A2A" strokeWidth={stroke*0.6} />
+          <rect x={handleX} y={y-hwSize*0.13} width={handleLen} height={hwSize*0.26} rx={hwSize*0.08} fill="#8B8F93" stroke="#2A2A2A" strokeWidth={stroke*0.5} />
+          <circle cx={knobX} cy={y} r={hwSize*0.11} fill="#2A2A2A" />
         </g>
       })()}
 
@@ -120,12 +126,14 @@ function BrankaPreview({ vstup, vysledok }: Props) {
       {/* Kóta reznej dĺžky zvislej bočnice. */}
       <DimLineV x={ram+tick*1.8} y1={0} y2={vyskaKridla} label={`rez ${vyskaKridla} mm`} fontSize={cutFont} tick={tick*0.6} stroke={stroke*0.8} color="#2A2A2A" />
 
-      {/* Oblúk otvorenia na 90° — panty vľavo, krídlo sa otvára smerom von (doprava od osi pántov). */}
+      {/* Oblúk otvorenia na 90° — os pántov podľa smeru otvárania, krídlo sa otvára smerom von od nej. */}
       <g>
-        <path d={`M ${0} ${vyskaKridla + tick*1.2} A ${sirkaKridla} ${sirkaKridla} 0 0 0 ${sirkaKridla} ${vyskaKridla + tick*1.2 - sirkaKridla}`}
+        <path d={pantyVlavo
+          ? `M ${0} ${vyskaKridla + tick*1.2} A ${sirkaKridla} ${sirkaKridla} 0 0 0 ${sirkaKridla} ${vyskaKridla + tick*1.2 - sirkaKridla}`
+          : `M ${sirkaKridla} ${vyskaKridla + tick*1.2} A ${sirkaKridla} ${sirkaKridla} 0 0 1 ${0} ${vyskaKridla + tick*1.2 - sirkaKridla}`}
           fill="none" stroke="#9AA0A6" strokeWidth={stroke} strokeDasharray={`${fontSize*.4} ${fontSize*.35}`} />
         <line x1={0} y1={vyskaKridla+tick*1.2} x2={sirkaKridla} y2={vyskaKridla+tick*1.2} stroke="#9AA0A6" strokeWidth={stroke*0.7} strokeDasharray={`${fontSize*.4} ${fontSize*.35}`} />
-        <text x={sirkaKridla*0.62} y={vyskaKridla+tick*1.2-sirkaKridla*0.32} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">otvorenie 90°</text>
+        <text x={pantyVlavo ? sirkaKridla*0.62 : sirkaKridla*0.38} y={vyskaKridla+tick*1.2-sirkaKridla*0.32} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">otvorenie 90°</text>
         <DimLineH y={vyskaKridla+tick*3.4} x1={0} x2={sirkaKridla} label={`priestor ~${sirkaKridla} mm`} fontSize={cutFont} tick={tick*0.6} stroke={stroke*0.8} color="#5B6166" />
       </g>
     </g>
@@ -133,7 +141,8 @@ function BrankaPreview({ vstup, vysledok }: Props) {
 }
 
 function DvojkridlovaPreview({ vstup, vysledok }: Props) {
-  const totalW = vstup.sirkaKridla, h = vstup.vyskaKridla, wingW = vysledok.sirkaKridla, ram = RAM_PROFIL_HRUBKA_MM
+  const wingW = vysledok.sirkaKridla, h = vysledok.vyskaKridla, ram = RAM_PROFIL_HRUBKA_MM
+  const totalW = wingW * 2 + vstup.medzeraStred
   const povrch = najdiPovrch(vstup.povrch), fill = povrch.drevo ? "url(#drevoBig)" : povrch.farba
   const marginL = 300, marginT = 260, marginR = 300, marginB = clamp(totalW * 0.4, 380, 640)
   const vbW = totalW + marginL + marginR, vbH = h + marginT + marginB
@@ -175,12 +184,13 @@ function DvojkridlovaPreview({ vstup, vysledok }: Props) {
   return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad dvojkrídlovej brány ${totalW} × ${h} mm`}>
     <defs><DimArrowDefs /><linearGradient id="drevoBig" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba} /><stop offset="45%" stopColor="rgba(255,255,255,0.18)" /><stop offset="55%" stopColor={povrch.farba} /><stop offset="100%" stopColor="rgba(0,0,0,0.22)" /></linearGradient></defs>
     <g transform={`translate(${marginL} ${marginT})`}>
-      {wing(0, 0)}{wing(wingW, 1)}
-      {/* Zvislá čiara medzi krídlami (styk dvoch krídel v strede brány, nie rezná značka). */}
+      {wing(0, 0)}{wing(wingW + vstup.medzeraStred, 1)}
+      {/* Medzera v strede (styk dvoch krídel v strede brány) — dve čiary s medzerou namiesto jednej. */}
       <line x1={wingW} y1={0} x2={wingW} y2={h} stroke="rgba(0,0,0,.35)" strokeWidth={stroke} />
+      <line x1={wingW + vstup.medzeraStred} y1={0} x2={wingW + vstup.medzeraStred} y2={h} stroke="rgba(0,0,0,.35)" strokeWidth={stroke} />
 
       {/* Technické kótovanie — celkový rozmer a rozmer jedného krídla. */}
-      <DimLineH y={-tick * 2.6} x1={0} x2={totalW} label={`${totalW} mm celkom — 2 × ${Math.round(wingW)} mm`} fontSize={fontSize} tick={tick} stroke={stroke} />
+      <DimLineH y={-tick * 2.6} x1={0} x2={totalW} label={`${Math.round(totalW)} mm celkom — 2 × ${Math.round(wingW)} mm`} fontSize={fontSize} tick={tick} stroke={stroke} />
       <DimLineV x={-tick * 2.6} y1={0} y2={h} label={`${h} mm`} fontSize={fontSize} tick={tick} stroke={stroke} />
 
       {/* Rezné kóty — bočnica (zvislý profil) a horný/dolný rám + priečka (vodorovný rez), na ľavom krídle. */}
@@ -188,20 +198,79 @@ function DvojkridlovaPreview({ vstup, vysledok }: Props) {
       <DimLineH y={ram + tick * 1.6} x1={ram} x2={wingW - ram} label={`rez rám/priečka ${innerW} mm`} fontSize={cutFont} tick={tick * 0.55} stroke={stroke * 0.75} color="#2A2A2A" />
       <DimLineH y={priackaSpodnaHranaY + tick * 1.6} x1={ram} x2={wingW - ram} label={`priečka ${PRIECKA_VYSKA_OD_ZEME_MM} mm od zeme`} fontSize={cutFont * 0.85} tick={tick * 0.5} stroke={stroke * 0.7} color="#2A2A2A" />
 
-      <text x={totalW / 2} y={h + fontSize * 1.4} fontSize={fontSize * .6} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#2A2A2A">2 samostatné krídla • horizontálne lamely</text>
+      <text x={totalW / 2} y={h + fontSize * 1.4} fontSize={fontSize * .6} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#2A2A2A">2 samostatné krídla • horizontálne lamely • medzera v strede {vstup.medzeraStred} mm</text>
 
       {/* Oblúky otvorenia na 90° pre obe krídla — ľavé krídlo panty vľavo (otvára sa dovnútra doľava),
-          pravé krídlo panty vpravo (otvára sa dovnútra doprava) — symetricky od stredu brány. */}
+          pravé krídlo panty vpravo (otvára sa dovnútra doprava) — kĺb pravého krídla je pri jeho vnútornom okraji. */}
       <g>
         <path d={`M 0 ${h + tick * 1.1} A ${wingW} ${wingW} 0 0 0 ${wingW} ${h + tick * 1.1 - wingW}`}
           fill="none" stroke="#9AA0A6" strokeWidth={stroke} strokeDasharray={`${fontSize * .35} ${fontSize * .3}`} />
-        <path d={`M ${totalW} ${h + tick * 1.1} A ${wingW} ${wingW} 0 0 1 ${wingW} ${h + tick * 1.1 - wingW}`}
+        <path d={`M ${totalW} ${h + tick * 1.1} A ${wingW} ${wingW} 0 0 1 ${wingW + vstup.medzeraStred} ${h + tick * 1.1 - wingW}`}
           fill="none" stroke="#9AA0A6" strokeWidth={stroke} strokeDasharray={`${fontSize * .35} ${fontSize * .3}`} />
         <line x1={0} y1={h + tick * 1.1} x2={totalW} y2={h + tick * 1.1} stroke="#9AA0A6" strokeWidth={stroke * 0.7} strokeDasharray={`${fontSize * .35} ${fontSize * .3}`} />
         <text x={wingW * 0.55} y={h + tick * 1.1 - wingW * 0.28} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">90°</text>
         <text x={totalW - wingW * 0.55} y={h + tick * 1.1 - wingW * 0.28} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">90°</text>
         <DimLineH y={h + wingW + tick * 1.9} x1={0} x2={wingW} label={`priestor ~${Math.round(wingW)} mm`} fontSize={cutFont} tick={tick * 0.6} stroke={stroke * 0.8} color="#5B6166" />
-        <DimLineH y={h + wingW + tick * 1.9} x1={wingW} x2={totalW} label={`priestor ~${Math.round(wingW)} mm`} fontSize={cutFont} tick={tick * 0.6} stroke={stroke * 0.8} color="#5B6166" />
+        <DimLineH y={h + wingW + tick * 1.9} x1={wingW + vstup.medzeraStred} x2={totalW} label={`priestor ~${Math.round(wingW)} mm`} fontSize={cutFont} tick={tick * 0.6} stroke={stroke * 0.8} color="#5B6166" />
+      </g>
+    </g>
+  </svg>
+}
+
+function PosuvnaPreview({ vstup, vysledok }: Props) {
+  const sirkaKridla = vysledok.sirkaKridla, vyskaKridla = vysledok.vyskaKridla
+  const { sirkaLamely } = vstup
+  const povrch = najdiPovrch(vstup.povrch)
+  const fill = povrch.drevo ? "url(#drevoPosuv)" : povrch.farba
+  const ram = RAM_PROFIL_HRUBKA_MM
+  const innerX = ram, innerY = ram, innerW = Math.max(0, sirkaKridla - 2 * ram)
+  // Krídlo sa posúva na stranu podľa vstup.stranaPosunu — šípka smeruje tým smerom.
+  const doprava = vstup.stranaPosunu !== "vlavo"
+  const scale = Math.max(sirkaKridla, vyskaKridla)
+  const fontSize = clamp(scale / 26, 32, 58)
+  const cutFont = fontSize * 0.62
+  const stroke = clamp(scale / 340, 2.2, 5)
+  const tick = fontSize * 0.9
+  // Priestor na zasunutie sa kreslí na strane posunu, mimo obrysu krídla — margin je preto väčší na tej strane.
+  const marginSide = Math.max(340, sirkaKridla * 0.55)
+  const marginL = doprava ? 300 : marginSide, marginR = doprava ? marginSide : 300
+  const marginT = 260, marginB = 320
+  const vbW = sirkaKridla + marginL + marginR, vbH = vyskaKridla + marginT + marginB
+  const lamely: number[] = []
+  for (let i = 0; i < vysledok.pocetLamiel; i++) lamely.push(innerY + vysledok.skutocnaMedzera * (i + 1) + sirkaLamely * i)
+
+  // Priestor na zasunutie — na strane posunu, od okraja krídla.
+  const zasunX1 = doprava ? sirkaKridla : -sirkaKridla
+  const zasunX2 = doprava ? sirkaKridla * 2 : 0
+  const arrowX1 = doprava ? sirkaKridla + tick : -tick
+  const arrowX2 = doprava ? sirkaKridla * 1.6 : -sirkaKridla * 0.6
+
+  return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad posúvnej brány ${sirkaKridla} × ${vyskaKridla} mm`}>
+    <defs><DimArrowDefs /><linearGradient id="drevoPosuv" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba}/><stop offset="45%" stopColor="rgba(255,255,255,0.18)"/><stop offset="55%" stopColor={povrch.farba}/><stop offset="100%" stopColor="rgba(0,0,0,0.22)"/></linearGradient></defs>
+    <g transform={`translate(${marginL} ${marginT})`}>
+      <rect width={sirkaKridla} height={vyskaKridla} fill="white" />
+      {lamely.map((pos, i) => <rect key={i} x={innerX} y={pos} width={innerW} height={sirkaLamely} fill={fill} stroke="rgba(0,0,0,.18)" strokeWidth={stroke*.5}/>)}
+      <g fill={FARBA_RAM}><rect width={ram} height={vyskaKridla}/><rect x={sirkaKridla-ram} width={ram} height={vyskaKridla}/><rect x={ram} width={sirkaKridla-2*ram} height={ram}/><rect x={ram} y={vyskaKridla-ram} width={sirkaKridla-2*ram} height={ram}/></g>
+      {/* Rezné značky. */}
+      <g stroke={CUT_COLOR} strokeWidth={stroke*1.3} strokeDasharray={`${fontSize*.35} ${fontSize*.35}`}>
+        <line x1={0} y1={ram} x2={sirkaKridla} y2={ram} />
+        <line x1={0} y1={vyskaKridla-ram} x2={sirkaKridla} y2={vyskaKridla-ram} />
+        <line x1={ram} y1={0} x2={ram} y2={vyskaKridla} />
+        <line x1={sirkaKridla-ram} y1={0} x2={sirkaKridla-ram} y2={vyskaKridla} />
+      </g>
+
+      {/* Technické kótovanie — celková šírka a výška krídla. */}
+      <DimLineH y={-tick*2.6} x1={0} x2={sirkaKridla} label={`${sirkaKridla} mm (vrátane presahu)`} fontSize={fontSize} tick={tick} stroke={stroke} />
+      <DimLineV x={-tick*2.6} y1={0} y2={vyskaKridla} label={`${vyskaKridla} mm`} fontSize={fontSize} tick={tick} stroke={stroke} />
+      <DimLineH y={ram+tick*1.8} x1={ram} x2={sirkaKridla-ram} label={`rez ${sirkaKridla-2*ram} mm`} fontSize={cutFont} tick={tick*0.6} stroke={stroke*0.8} color="#2A2A2A" />
+      <DimLineV x={ram+tick*1.8} y1={0} y2={vyskaKridla} label={`rez ${vyskaKridla} mm`} fontSize={cutFont} tick={tick*0.6} stroke={stroke*0.8} color="#2A2A2A" />
+
+      {/* Priestor na zasunutie — obdĺžnik + šípka smerom na stranu posunu, namiesto oblúka otvorenia. */}
+      <g>
+        <rect x={zasunX1} y={0} width={sirkaKridla} height={vyskaKridla} fill="none" stroke="#9AA0A6" strokeWidth={stroke} strokeDasharray={`${fontSize*.4} ${fontSize*.35}`} />
+        <line x1={arrowX1} y1={vyskaKridla/2} x2={arrowX2} y2={vyskaKridla/2} stroke="#5B6166" strokeWidth={stroke*1.4} markerEnd="url(#arrowEndGray)" />
+        <text x={(zasunX1+zasunX2)/2} y={vyskaKridla/2 - tick*0.8} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">priestor na zasunutie</text>
+        <DimLineH y={vyskaKridla+tick*1.6} x1={zasunX1} x2={zasunX2} label={`~${sirkaKridla} mm voľno na ${doprava ? "pravej" : "ľavej"} strane`} fontSize={cutFont} tick={tick*0.6} stroke={stroke*0.8} color="#5B6166" />
       </g>
     </g>
   </svg>

@@ -1,6 +1,7 @@
 "use client"
 
-import { SIRKY_LAMIEL_MM, POVRCHY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu } from "@/lib/gate-config"
+import type { ReactNode } from "react"
+import { SIRKY_LAMIEL_MM, POVRCHY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana } from "@/lib/gate-config"
 import type { GateInput } from "@/lib/gate-calc"
 
 interface Props {
@@ -43,17 +44,66 @@ function NumberField({
   )
 }
 
+function StranaPicker({
+  label,
+  value,
+  labelVlavo,
+  labelVpravo,
+  onChange,
+}: {
+  label: string
+  value: Strana
+  labelVlavo: string
+  labelVpravo: string
+  onChange: (v: Strana) => void
+}) {
+  return (
+    <div>
+      <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-muted-foreground">{label}</span>
+      <div className="grid grid-cols-2 gap-2">
+        {([
+          { id: "vlavo" as Strana, nazov: labelVlavo },
+          { id: "vpravo" as Strana, nazov: labelVpravo },
+        ]).map((s) => {
+          const active = value === s.id
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onChange(s.id)}
+              aria-pressed={active}
+              className={
+                "rounded-md border-2 px-3 py-4 text-base font-bold transition-colors " +
+                (active ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")
+              }
+            >
+              {s.nazov}
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+function SectionTitle({ children }: { children: ReactNode }) {
+  return <h3 className="text-sm font-bold uppercase tracking-wide text-primary">{children}</h3>
+}
+
 export function GateForm({ vstup, onChange }: Props) {
   const jeBrana = vstup.typProduktu === "dvojkridlovaBrana"
+  const jePosuvna = vstup.typProduktu === "posuvnaBrana"
+  const jeBranka = !jeBrana && !jePosuvna
 
   return (
     <div className="flex flex-col gap-6">
       <div>
         <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-muted-foreground">Typ produktu</span>
-        <div className="grid grid-cols-2 gap-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {([
-            { id: "branka", nazov: "Jednokrídlová bránka" },
+            { id: "branka", nazov: "Malá bránka" },
             { id: "dvojkridlovaBrana", nazov: "Dvojkrídlová brána" },
+            { id: "posuvnaBrana", nazov: "Posúvna brána" },
           ] as const).map((p) => {
             const active = vstup.typProduktu === p.id
             return (
@@ -63,7 +113,7 @@ export function GateForm({ vstup, onChange }: Props) {
                 onClick={() => onChange({
                   ...vstup,
                   typProduktu: p.id as TypProduktu,
-                  orientacia: p.id === "dvojkridlovaBrana" ? "horizontalne" : vstup.orientacia,
+                  orientacia: p.id === "dvojkridlovaBrana" || p.id === "posuvnaBrana" ? "horizontalne" : vstup.orientacia,
                 })}
                 className={
                   "rounded-md border-2 px-3 py-4 text-base font-bold transition-colors " +
@@ -88,21 +138,99 @@ export function GateForm({ vstup, onChange }: Props) {
         />
       </label>
 
-      <NumberField
-        label={jeBrana ? "Celková šírka brány" : "Šírka krídla"}
-        value={vstup.sirkaKridla}
-        suffix="mm"
-        hint={jeBrana ? `Brána sa automaticky rozdelí na 2 krídla po ${Math.round(vstup.sirkaKridla / 2)} mm.` : undefined}
-        onChange={(v) => onChange({ ...vstup, sirkaKridla: v })}
-      />
-      <NumberField
-        label={jeBrana ? "Výška brány" : "Výška krídla"}
-        value={vstup.vyskaKridla}
-        suffix="mm"
-        onChange={(v) => onChange({ ...vstup, vyskaKridla: v })}
-      />
+      {/* --- Zameranie na mieste --- */}
+      <div className="flex flex-col gap-4 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
+        <SectionTitle>Zameranie na mieste</SectionTitle>
 
-      {!jeBrana && (
+        {jeBranka && (
+          <>
+            <NumberField
+              label="Svetlá šírka otvoru"
+              value={vstup.svetlaSirka}
+              suffix="mm"
+              hint="rozmer medzi stĺpikmi/múrikmi, ktorý je na mieste k dispozícii"
+              onChange={(v) => onChange({ ...vstup, svetlaSirka: v })}
+            />
+            <NumberField
+              label="Vôľa na strane s pántmi"
+              value={vstup.vola}
+              suffix="mm"
+              hint="priestor potrebný na panty a voľné otváranie bez zadrhávania"
+              onChange={(v) => onChange({ ...vstup, vola: v })}
+            />
+            <StranaPicker
+              label="Smer otvárania (strana pántov)"
+              value={vstup.smerOtvarania}
+              labelVlavo="Panty vľavo"
+              labelVpravo="Panty vpravo"
+              onChange={(v) => onChange({ ...vstup, smerOtvarania: v })}
+            />
+          </>
+        )}
+
+        {jeBrana && (
+          <>
+            <NumberField
+              label="Svetlá šírka otvoru"
+              value={vstup.svetlaSirka}
+              suffix="mm"
+              hint="celý rozmer medzi stĺpikmi, do ktorého idú obe krídla"
+              onChange={(v) => onChange({ ...vstup, svetlaSirka: v })}
+            />
+            <div className="grid grid-cols-2 gap-3">
+              <NumberField label="Vôľa vľavo" value={vstup.volaVlavo} suffix="mm" onChange={(v) => onChange({ ...vstup, volaVlavo: v })} />
+              <NumberField label="Vôľa vpravo" value={vstup.volaVpravo} suffix="mm" onChange={(v) => onChange({ ...vstup, volaVpravo: v })} />
+            </div>
+            <NumberField
+              label="Medzera v strede"
+              value={vstup.medzeraStred}
+              suffix="mm"
+              hint="aby sa krídla pri zatváraní o seba nedreli"
+              onChange={(v) => onChange({ ...vstup, medzeraStred: v })}
+            />
+          </>
+        )}
+
+        {jePosuvna && (
+          <>
+            <NumberField
+              label="Svetlá šírka otvoru"
+              value={vstup.svetlaSirka}
+              suffix="mm"
+              hint="čo má byť priechodné, keď je brána otvorená"
+              onChange={(v) => onChange({ ...vstup, svetlaSirka: v })}
+            />
+            <NumberField
+              label="Presah krídla"
+              value={vstup.presah}
+              suffix="mm"
+              hint="o koľko musí byť krídlo širšie než otvor, aby ho pri zatvorení celé zakrylo"
+              onChange={(v) => onChange({ ...vstup, presah: v })}
+            />
+            <StranaPicker
+              label="Strana posunu (zasunutia)"
+              value={vstup.stranaPosunu}
+              labelVlavo="Posúva sa doľava"
+              labelVpravo="Posúva sa doprava"
+              onChange={(v) => onChange({ ...vstup, stranaPosunu: v })}
+            />
+          </>
+        )}
+
+        <div className="grid grid-cols-2 gap-3">
+          <NumberField label="Výška podmurovky od zeme" value={vstup.vyskaPodmurovky} suffix="mm" onChange={(v) => onChange({ ...vstup, vyskaPodmurovky: v })} />
+          <NumberField label="Medzera pod bránou" value={vstup.medzeraPodBranou} suffix="mm" onChange={(v) => onChange({ ...vstup, medzeraPodBranou: v })} />
+        </div>
+        <NumberField
+          label="Požadovaná celková výška"
+          value={vstup.celkovaVyska}
+          suffix="mm"
+          hint="od zeme, vrátane podmurovky aj medzery pod bránou"
+          onChange={(v) => onChange({ ...vstup, celkovaVyska: v })}
+        />
+      </div>
+
+      {jeBranka && (
         <div>
           <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-muted-foreground">Osadenie lamiel</span>
           <div className="grid grid-cols-2 gap-2">
@@ -128,6 +256,12 @@ export function GateForm({ vstup, onChange }: Props) {
       {jeBrana && (
         <div className="rounded-md border border-primary/30 bg-secondary p-4 text-sm">
           <strong>Horizontálne lamely</strong> — pri dvojkrídlovej bráne sú pevne nastavené. V každom krídle sa počíta samostatne spodná a horná časť okolo priečky pohonu.
+        </div>
+      )}
+
+      {jePosuvna && (
+        <div className="rounded-md border border-primary/30 bg-secondary p-4 text-sm">
+          <strong>Horizontálne lamely</strong> — pri posúvnej bráne sú pevne nastavené. Krídlo je jeden súvislý panel bez priečky na pohon.
         </div>
       )}
 
