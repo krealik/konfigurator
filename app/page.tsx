@@ -23,6 +23,7 @@ export default function Page() {
     medzeraPodBranou: num(vstup.medzeraPodBranou),
     celkovaVyska: num(vstup.celkovaVyska),
     medzera: num(vstup.medzera),
+    prekazky: Array.isArray(vstup.prekazky) ? vstup.prekazky : [],
     // Dvojkrídlová aj posúvna brána majú vždy horizontálnu orientáciu lamiel.
     orientacia:
       vstup.typProduktu === "dvojkridlovaBrana" || vstup.typProduktu === "posuvnaBrana"
