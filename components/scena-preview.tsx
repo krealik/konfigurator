@@ -15,6 +15,7 @@ interface Props {
   prekazky: Prekazka[]
   kreslenie: boolean
   onPridajPrekazku?: (p: Prekazka, screenPos: { x: number; y: number }) => void
+  onPresunPrekazku?: (id: string, patch: Partial<Prekazka>) => void
   aktivnaId: string
   onKlikPolozku?: (id: string) => void
 }
@@ -199,7 +200,7 @@ function PrekazkyLayer({ prekazky, maxH, fontSize, stroke }: { prekazky: Prekazk
         const y2 = maxH - p.vyskaOd
         return <g key={p.id}>
           <line x1={x} y1={y1} x2={x} y2={y2} stroke="#5B6166" strokeWidth={Math.max(p.sirka, stroke * 2)} />
-          <text x={x} y={y1 - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">{p.nazov}</text>
+          <text x={x} y={y1 - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166" stroke="white" strokeWidth={fontSize*0.22} paintOrder="stroke">{p.nazov}</text>
         </g>
       }
       const y = maxH - p.vyskaDo
@@ -207,12 +208,12 @@ function PrekazkyLayer({ prekazky, maxH, fontSize, stroke }: { prekazky: Prekazk
       if (p.typ === "existujuci-stlp") {
         return <g key={p.id}>
           <rect x={p.poziciaOdKraja} y={y} width={p.sirka} height={h} fill="#8B5E34" stroke="#5C3A1E" strokeWidth={stroke} />
-          <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5C3A1E">{p.nazov}</text>
+          <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5C3A1E" stroke="white" strokeWidth={fontSize*0.22} paintOrder="stroke">{p.nazov}</text>
         </g>
       }
       return <g key={p.id}>
         <rect x={p.poziciaOdKraja} y={y} width={p.sirka} height={h} fill="rgba(91,97,102,0.2)" stroke="#5B6166" strokeWidth={stroke} strokeDasharray="10 7" />
-        <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">{p.nazov}</text>
+        <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166" stroke="white" strokeWidth={fontSize*0.22} paintOrder="stroke">{p.nazov}</text>
       </g>
     })}
   </g>
@@ -227,9 +228,10 @@ function bodDoMm(svg: SVGSVGElement, clientX: number, clientY: number, marginL: 
   return { x: p.x - marginL, y: p.y - marginT }
 }
 
-export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, aktivnaId, onKlikPolozku }: Props) {
+export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, onPresunPrekazku, aktivnaId, onKlikPolozku }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
   const [kreslimRect, setKreslimRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+  const [presuvam, setPresuvam] = useState<{ id: string; startX: number; startY: number; orig: Prekazka } | null>(null)
   const [nastrojTyp] = useState<"obdlznik" | "ciara">("obdlznik")
 
   // Rozmiestnenie produktov vedľa seba — každý má svoju šírku a začína za predchádzajúcim
@@ -254,21 +256,49 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, a
   const vbW = totalSceneW + marginL + marginR
   const vbH = maxH + marginT + marginB
 
+  function najdiPodBodom(xMm: number, yMm: number) {
+    return prekazky.find((p) => {
+      const yTop = maxH - p.vyskaDo
+      const yBottom = maxH - p.vyskaOd
+      return xMm >= p.poziciaOdKraja && xMm <= p.poziciaOdKraja + p.sirka && yMm >= yTop && yMm <= yBottom
+    })
+  }
+
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (!kreslenie || !svgRef.current) return
     ;(e.target as Element).setPointerCapture?.(e.pointerId)
     const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
-    setKreslimRect({ x, y, w: 0, h: 0 })
+    const zasiahnuta = onPresunPrekazku ? najdiPodBodom(x, y) : undefined
+    if (zasiahnuta) {
+      setPresuvam({ id: zasiahnuta.id, startX: x, startY: y, orig: zasiahnuta })
+    } else {
+      setKreslimRect({ x, y, w: 0, h: 0 })
+    }
   }
 
   function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
-    if (!kreslenie || !kreslimRect || !svgRef.current) return
+    if (!kreslenie || !svgRef.current) return
     const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
+    if (presuvam && onPresunPrekazku) {
+      const dx = Math.round(x - presuvam.startX)
+      const dy = Math.round(y - presuvam.startY)
+      onPresunPrekazku(presuvam.id, {
+        poziciaOdKraja: Math.max(0, presuvam.orig.poziciaOdKraja + dx),
+        vyskaOd: Math.max(0, presuvam.orig.vyskaOd - dy),
+        vyskaDo: Math.max(0, presuvam.orig.vyskaDo - dy),
+      })
+      return
+    }
+    if (!kreslimRect) return
     setKreslimRect((k) => k ? { ...k, w: x - k.x, h: y - k.y } : k)
   }
 
   function onPointerUp(e: React.PointerEvent<SVGSVGElement>) {
     if (!kreslenie) return
+    if (presuvam) {
+      setPresuvam(null)
+      return
+    }
     if (kreslimRect && onPridajPrekazku) {
       const absW = Math.abs(kreslimRect.w), absH = Math.abs(kreslimRect.h)
       // Čiara: úzky ťah (w << h) alebo kliknutie bez pohybu

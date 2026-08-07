@@ -12,6 +12,7 @@ import { ZakaznikForm } from "@/components/zakaznik-form"
 import { GateObstacles } from "@/components/gate-obstacles"
 import { ObstaclePopover } from "@/components/obstacle-popover"
 import { PrintZostava } from "@/components/print-zostava"
+import { ZoomCanvas } from "@/components/zoom-canvas"
 
 type PolozkaId = string
 type Zalozka = "zakaznik" | "merania" | "scena" | "vysledok"
@@ -118,6 +119,11 @@ export default function Page() {
     setNavrh(null)
   }
 
+  // Presun existujúcej prekážky ťahaním (dopasovanie na mieste, bez prepisovania čísel ručne).
+  function presunPrekazku(id: string, patch: Partial<Prekazka>) {
+    setPrekazky((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)))
+  }
+
   const nazovAktivnejPolozkySuffix = polozky.length > 1
     ? ` (${polozky.findIndex((p) => p.id === aktivnaId) + 1}/${polozky.length})`
     : ""
@@ -216,7 +222,7 @@ export default function Page() {
               <GateForm vstup={aktivna.vstup} onChange={zmenVstup} />
             </section>
 
-            <section aria-label="Náhľad" className="flex flex-col gap-4">
+            <section aria-label="Náhľad" className="flex flex-col gap-4 lg:sticky lg:top-4 lg:self-start lg:max-h-[calc(100svh-2rem)] lg:overflow-y-auto">
               {aktivnaVypocitana.vysledok.varovania.length > 0 && (
                 <div className="rounded-md border-2 border-destructive/50 bg-destructive/10 p-4 text-sm font-semibold text-destructive">
                   {aktivnaVypocitana.vysledok.varovania.map((v) => <p key={v}>⚠ {v}</p>)}
@@ -244,11 +250,13 @@ export default function Page() {
               </p>
             </div>
             <div className="rounded-md border border-border bg-muted p-2 md:p-4">
-              {jednaPolozka ? (
-                <GatePreview vstup={aktivnaVypocitana.vstup} vysledok={aktivnaVypocitana.vysledok} kreslenie={true} onPridajPrekazku={otvorNavrh} />
-              ) : (
-                <ScenaPreview polozky={vypocitane} prekazky={prekazky} kreslenie={true} onPridajPrekazku={otvorNavrh} aktivnaId={aktivnaId} onKlikPolozku={setAktivnaId} />
-              )}
+              <ZoomCanvas>
+                {jednaPolozka ? (
+                  <GatePreview vstup={aktivnaVypocitana.vstup} vysledok={aktivnaVypocitana.vysledok} kreslenie={true} onPridajPrekazku={otvorNavrh} onPresunPrekazku={presunPrekazku} />
+                ) : (
+                  <ScenaPreview polozky={vypocitane} prekazky={prekazky} kreslenie={true} onPridajPrekazku={otvorNavrh} onPresunPrekazku={presunPrekazku} aktivnaId={aktivnaId} onKlikPolozku={setAktivnaId} />
+                )}
+              </ZoomCanvas>
             </div>
 
             {prekazky.filter((p) => p.typ === "existujuci-stlp").length >= 2 && (() => {
