@@ -105,6 +105,7 @@ export interface RezPolozka {
 export interface GateResult {
   typProduktu: TypProduktu
   sirkaKridla: number
+  vyskaKridla: number
   pocetKridiel: number
   vnutornaSirka: number
   dlzkaLamely: number
@@ -212,6 +213,7 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
   return {
     typProduktu: vstup.typProduktu,
     sirkaKridla,
+    vyskaKridla,
     pocetKridiel,
     vnutornaSirka: vnutornaSirkaOtvoru,
     dlzkaLamely,
