@@ -178,37 +178,39 @@ export default function Page() {
 
         {/* --- Záložka: Merania a produkty --- */}
         {zalozka === "merania" && (
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+          <div className={polozky.length > 1 ? "grid grid-cols-1 gap-6 md:grid-cols-[200px_1fr] lg:grid-cols-[200px_1fr_1fr]" : "grid grid-cols-1 gap-8 lg:grid-cols-2"}>
+            {polozky.length > 1 && (
+              <aside aria-label="Zoznam produktov" className="flex flex-row gap-2 overflow-x-auto md:flex-col md:overflow-visible">
+                {polozky.map((pol, idx) => {
+                  const v = vypocitane.find((vv) => vv.id === pol.id)
+                  const nazov = v ? nazovProduktu(v.vstup.typProduktu) : ""
+                  const active = aktivnaId === pol.id
+                  return (
+                    <div key={pol.id} className="flex shrink-0 items-stretch overflow-hidden rounded-md border-2 md:shrink md:w-full"
+                      style={{ borderColor: active ? "var(--color-primary)" : "var(--color-input)" }}>
+                      <button
+                        type="button"
+                        onClick={() => setAktivnaId(pol.id)}
+                        className={"flex-1 px-4 py-3 text-left text-sm font-bold transition-colors " +
+                          (active ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-secondary")}
+                      >
+                        {idx + 1}. {nazov}
+                      </button>
+                      <button type="button" onClick={() => zmazPolozku(pol.id)}
+                        className={"px-2.5 text-xs font-bold transition-colors " +
+                          (active ? "bg-primary/70 text-primary-foreground" : "bg-background text-muted-foreground hover:text-destructive")}
+                        aria-label="Zmazať položku">×</button>
+                    </div>
+                  )
+                })}
+                <button type="button" onClick={pridajPolozku}
+                  className="shrink-0 rounded-md border-2 border-dashed border-primary/50 px-4 py-3 text-sm font-bold text-primary/70 hover:border-primary hover:text-primary transition-colors md:w-full">
+                  + Pridať produkt
+                </button>
+              </aside>
+            )}
+
             <section aria-label="Konfigurácia">
-              {polozky.length > 1 && (
-                <div className="mb-4 flex flex-wrap gap-2">
-                  {polozky.map((pol, idx) => {
-                    const v = vypocitane.find((vv) => vv.id === pol.id)
-                    const nazov = v ? nazovProduktu(v.vstup.typProduktu) : ""
-                    return (
-                      <div key={pol.id} className="flex items-stretch overflow-hidden rounded-md border-2"
-                        style={{ borderColor: aktivnaId === pol.id ? "var(--color-primary)" : "var(--color-input)" }}>
-                        <button
-                          type="button"
-                          onClick={() => setAktivnaId(pol.id)}
-                          className={"px-4 py-2.5 text-sm font-bold transition-colors " +
-                            (aktivnaId === pol.id ? "bg-primary text-primary-foreground" : "bg-background text-foreground hover:bg-secondary")}
-                        >
-                          {idx + 1}. {nazov}
-                        </button>
-                        <button type="button" onClick={() => zmazPolozku(pol.id)}
-                          className={"px-2.5 text-xs font-bold transition-colors " +
-                            (aktivnaId === pol.id ? "bg-primary/70 text-primary-foreground" : "bg-background text-muted-foreground hover:text-destructive")}
-                          aria-label="Zmazať položku">×</button>
-                      </div>
-                    )
-                  })}
-                  <button type="button" onClick={pridajPolozku}
-                    className="rounded-md border-2 border-dashed border-primary/50 px-4 py-2.5 text-sm font-bold text-primary/70 hover:border-primary hover:text-primary transition-colors">
-                    + Pridať produkt
-                  </button>
-                </div>
-              )}
               {polozky.length === 1 && (
                 <div className="mb-4 flex justify-end">
                   <button type="button" onClick={pridajPolozku}

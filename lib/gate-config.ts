@@ -30,6 +30,9 @@ export type TypProduktu = "branka" | "dvojkridlovaBrana" | "posuvnaBrana"
 /** Strana — použitá pre smer otvárania (bránka) aj stranu posunu (posúvna brána). */
 export type Strana = "vlavo" | "vpravo"
 
+/** Smer výkyvu krídel dvojkrídlovej brány — dovnútra pozemku alebo von na ulicu/vjazd. */
+export type SmerVykyvu = "dnu" | "von"
+
 export type SposobKotvenia = "murik" | "stlpiky-beton" | "existujuce-stlpy"
 export const SPOSOBY_KOTVENIA = [
   { id: "murik", nazov: "Múrik" },
@@ -131,6 +134,8 @@ export const DEFAULTS_POLOZKY = {
   volaVlavo: 60,
   volaVpravo: 60,
   medzeraStred: 20,
+  /** Len dvojkrídlová brána — smer výkyvu krídel pri otváraní. */
+  smerVykyvu: "dnu" as SmerVykyvu,
 
   presah: 500,
   stranaPosunu: "vpravo" as Strana,

@@ -23,6 +23,7 @@ export function GateResults({ vstup, vysledok }: Props) {
       {!jeBrana && !jePosuvna && <ParamRow label="Smer otvárania" value={vstup.smerOtvarania === "vlavo" ? "Panty vľavo" : "Panty vpravo"} />}
       {jeBrana && <ParamRow label="Vôľa vľavo / vpravo" value={`${fmt(vstup.volaVlavo)} / ${fmt(vstup.volaVpravo)} mm`} />}
       {jeBrana && <ParamRow label="Medzera v strede" value={`${fmt(vstup.medzeraStred)} mm`} />}
+      {jeBrana && <ParamRow label="Smer otvárania" value={vstup.smerVykyvu === "dnu" ? "Dnu (na pozemok)" : "Von (na ulicu/vjazd)"} />}
       {jePosuvna && <ParamRow label="Presah krídla" value={`${fmt(vstup.presah)} mm`} />}
       {jePosuvna && <ParamRow label="Strana posunu" value={vstup.stranaPosunu === "vlavo" ? "Doľava" : "Doprava"} />}
       <ParamRow label="Výška podmurovky" value={`${fmt(vstup.vyskaPodmurovky)} mm`} />

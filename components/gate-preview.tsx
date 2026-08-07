@@ -201,11 +201,14 @@ function useKreslenieProekazky(
       return
     }
     const poziciaOdKraja = Math.round(Math.min(bod1.x, x))
-    const sirka = Math.round(Math.abs(x - bod1.x))
-    if (sirka > 10 && onPridaj) {
-      const vyskaDoDefault = Math.max(200, Math.min(vyskaKridla, 1500))
+    const sirka = Math.round(Math.max(30, Math.abs(x - bod1.x)))
+    const yTop = Math.min(bod1.y, y)
+    const yBottom = Math.max(bod1.y, y)
+    const vyskaOd = Math.round(Math.max(0, vyskaKridla - yBottom))
+    const vyskaDo = Math.round(Math.max(vyskaOd + 30, vyskaKridla - yTop))
+    if ((Math.abs(x - bod1.x) > 10 || Math.abs(y - bod1.y) > 10) && onPridaj) {
       onPridaj(
-        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd: 0, vyskaDo: vyskaDoDefault },
+        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
         { x: e.clientX, y: e.clientY },
       )
     }
@@ -216,17 +219,18 @@ function useKreslenieProekazky(
   return { bod1, zivyBod2, onPointerDown, onPointerMove, onPointerUp, onClick }
 }
 
-/** Živá náhľadová čiara medzi prvým klikom a aktuálnou pozíciou kurzora — ukazuje sa, kým sa čaká na druhý klik. */
+/** Živý náhľad medzi prvým klikom a aktuálnou pozíciou kurzora — obdĺžnik zohľadňujúci aj šírku aj výšku, ukazuje sa kým sa čaká na druhý klik. */
 export function ZivaCiaraNahlad({ bod1, bod2, fontSize, stroke }: { bod1: { x: number; y: number }; bod2: { x: number; y: number }; fontSize: number; stroke: number }) {
-  const dlzka = Math.round(Math.abs(bod2.x - bod1.x))
-  const midX = (bod1.x + bod2.x) / 2
+  const x = Math.min(bod1.x, bod2.x)
+  const y = Math.min(bod1.y, bod2.y)
+  const w = Math.abs(bod2.x - bod1.x)
+  const h = Math.abs(bod2.y - bod1.y)
   return (
     <g>
+      <rect x={x} y={y} width={w} height={h} fill="rgba(230,57,70,0.12)" stroke="#E63946" strokeWidth={stroke * 1.4} strokeDasharray={`${fontSize * 0.35} ${fontSize * 0.3}`} />
       <circle cx={bod1.x} cy={bod1.y} r={fontSize * 0.28} fill="#E63946" />
-      <line x1={bod1.x} y1={bod1.y} x2={bod2.x} y2={bod1.y} stroke="#E63946" strokeWidth={stroke * 1.4} strokeDasharray={`${fontSize * 0.35} ${fontSize * 0.3}`} />
-      <circle cx={bod2.x} cy={bod1.y} r={fontSize * 0.2} fill="#E63946" />
-      <text x={midX} y={bod1.y - fontSize * 0.5} fontSize={fontSize} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#E63946" stroke="white" strokeWidth={fontSize * 0.22} paintOrder="stroke">
-        {dlzka} mm
+      <text x={x + w / 2} y={y - fontSize * 0.5} fontSize={fontSize} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#E63946" stroke="white" strokeWidth={fontSize * 0.22} paintOrder="stroke">
+        {Math.round(w)} × {Math.round(h)} mm
       </text>
     </g>
   )
@@ -393,18 +397,19 @@ function DvojkridlovaPreview({ vstup, vysledok, kreslenie, onPridajPrekazku, onP
       <DimLineH y={ram + tick * 1.6} x1={ram} x2={wingW - ram} label={`rez rám/priečka ${innerW} mm`} fontSize={cutFont} tick={tick * 0.55} stroke={stroke * 0.75} color="#2A2A2A" />
       <DimLineH y={priackaSpodnaHranaY + tick * 1.6} x1={ram} x2={wingW - ram} label={`priečka ${PRIECKA_VYSKA_OD_ZEME_MM} mm od zeme`} fontSize={cutFont * 0.85} tick={tick * 0.5} stroke={stroke * 0.7} color="#2A2A2A" />
 
-      <text x={totalW / 2} y={h + fontSize * 1.4} fontSize={fontSize * .6} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#2A2A2A">2 samostatné krídla • horizontálne lamely • medzera v strede {vstup.medzeraStred} mm</text>
+      <text x={totalW / 2} y={h + fontSize * 1.4} fontSize={fontSize * .6} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#2A2A2A">2 samostatné krídla • horizontálne lamely • medzera v strede {vstup.medzeraStred} mm • otvára sa {vstup.smerVykyvu === "dnu" ? "DNU (na pozemok)" : "VON (na ulicu/vjazd)"}</text>
 
       {/* Oblúky otvorenia na 90° pre obe krídla — ľavé krídlo panty vľavo (otvára sa dovnútra doľava),
-          pravé krídlo panty vpravo (otvára sa dovnútra doprava) — kĺb pravého krídla je pri jeho vnútornom okraji. */}
+          pravé krídlo panty vpravo (otvára sa dovnútra doprava) — kĺb pravého krídla je pri jeho vnútornom okraji.
+          Pohľad spredu neukáže skutočnú hĺbku (dnu/von) — smer je preto vypísaný textom pri oblúku. */}
       <g>
         <path d={`M 0 ${h + tick * 1.1} A ${wingW} ${wingW} 0 0 0 ${wingW} ${h + tick * 1.1 - wingW}`}
           fill="none" stroke="#9AA0A6" strokeWidth={stroke} strokeDasharray={`${fontSize * .35} ${fontSize * .3}`} />
         <path d={`M ${totalW} ${h + tick * 1.1} A ${wingW} ${wingW} 0 0 1 ${wingW + vstup.medzeraStred} ${h + tick * 1.1 - wingW}`}
           fill="none" stroke="#9AA0A6" strokeWidth={stroke} strokeDasharray={`${fontSize * .35} ${fontSize * .3}`} />
         <line x1={0} y1={h + tick * 1.1} x2={totalW} y2={h + tick * 1.1} stroke="#9AA0A6" strokeWidth={stroke * 0.7} strokeDasharray={`${fontSize * .35} ${fontSize * .3}`} />
-        <text x={wingW * 0.55} y={h + tick * 1.1 - wingW * 0.28} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">90°</text>
-        <text x={totalW - wingW * 0.55} y={h + tick * 1.1 - wingW * 0.28} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">90°</text>
+        <text x={wingW * 0.55} y={h + tick * 1.1 - wingW * 0.28} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">90° {vstup.smerVykyvu === "dnu" ? "dnu" : "von"}</text>
+        <text x={totalW - wingW * 0.55} y={h + tick * 1.1 - wingW * 0.28} fontSize={cutFont} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">90° {vstup.smerVykyvu === "dnu" ? "dnu" : "von"}</text>
         <DimLineH y={h + wingW + tick * 1.9} x1={0} x2={wingW} label={`priestor ~${Math.round(wingW)} mm`} fontSize={cutFont} tick={tick * 0.6} stroke={stroke * 0.8} color="#5B6166" />
         <DimLineH y={h + wingW + tick * 1.9} x1={wingW + vstup.medzeraStred} x2={totalW} label={`priestor ~${Math.round(wingW)} mm`} fontSize={cutFont} tick={tick * 0.6} stroke={stroke * 0.8} color="#5B6166" />
       </g>

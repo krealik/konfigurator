@@ -310,11 +310,14 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
       return
     }
     const poziciaOdKraja = Math.round(Math.min(bod1.x, x))
-    const sirka = Math.round(Math.abs(x - bod1.x))
-    if (sirka > 10 && onPridajPrekazku) {
-      const vyskaDoDefault = Math.max(200, Math.min(maxH, 1500))
+    const sirka = Math.round(Math.max(30, Math.abs(x - bod1.x)))
+    const yTop = Math.min(bod1.y, y)
+    const yBottom = Math.max(bod1.y, y)
+    const vyskaOd = Math.round(Math.max(0, maxH - yBottom))
+    const vyskaDo = Math.round(Math.max(vyskaOd + 30, maxH - yTop))
+    if ((Math.abs(x - bod1.x) > 10 || Math.abs(y - bod1.y) > 10) && onPridajPrekazku) {
       onPridajPrekazku(
-        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd: 0, vyskaDo: vyskaDoDefault },
+        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
         { x: e.clientX, y: e.clientY },
       )
     }

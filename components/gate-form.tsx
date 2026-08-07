@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { SIRKY_LAMIEL_MM, POVRCHY, PRISLUSENSTVO_POHONU, PRISLUSENSTVO_BRANKY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana, type PrislusenstvoPolozka } from "@/lib/gate-config"
+import { SIRKY_LAMIEL_MM, POVRCHY, PRISLUSENSTVO_POHONU, PRISLUSENSTVO_BRANKY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana, type SmerVykyvu, type PrislusenstvoPolozka } from "@/lib/gate-config"
 import type { GateInput } from "@/lib/gate-calc"
 
 interface Props {
@@ -214,6 +214,21 @@ export function GateForm(props: Props) {
               hint="aby sa krídla pri zatváraní o seba nedreli"
               onChange={(v) => onChange({ ...vstup, medzeraStred: v })}
             />
+            <div>
+              <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-muted-foreground">Smer otvárania</span>
+              <div className="grid grid-cols-2 gap-2">
+                {([{ v: "dnu", nazov: "Dnu (na pozemok)" }, { v: "von", nazov: "Von (na ulicu/vjazd)" }] as const).map((o) => {
+                  const active = vstup.smerVykyvu === o.v
+                  return (
+                    <button key={o.v} type="button" onClick={() => onChange({ ...vstup, smerVykyvu: o.v as SmerVykyvu })} aria-pressed={active}
+                      className={"rounded-md border-2 py-4 text-base font-bold transition-colors " + (active ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}>
+                      {o.nazov}
+                    </button>
+                  )
+                })}
+              </div>
+              <span className="mt-1.5 block text-sm text-muted-foreground">kam sa krídla vykývnu pri otváraní</span>
+            </div>
           </>
         )}
 
@@ -257,20 +272,8 @@ export function GateForm(props: Props) {
       </div>
 
       {jePosuvna && (
-        <div>
-          <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-muted-foreground">Koľajnica / vodiaca lišta</span>
-          <div className="grid grid-cols-2 gap-2">
-            {([{ v: true, nazov: "Áno, dodáme" }, { v: false, nazov: "Zákazník má vlastnú" }] as const).map((o) => {
-              const active = vstup.kolajnica === o.v
-              return (
-                <button key={String(o.v)} type="button" onClick={() => onChange({ ...vstup, kolajnica: o.v })} aria-pressed={active}
-                  className={"rounded-md border-2 py-4 text-base font-bold transition-colors " + (active ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}>
-                  {o.nazov}
-                </button>
-              )
-            })}
-          </div>
-          <span className="mt-1.5 block text-sm text-muted-foreground">štrukturálna súčasť posúvnej brány — potrebná aj bez pohonu</span>
+        <div className="rounded-md border-2 border-primary/30 bg-secondary/40 px-4 py-3 text-sm text-foreground">
+          <strong>Koľajnica / vodiaca lišta</strong> — povinná súčasť posúvnej brány, objednáva sa vždy s produktom (nie je ju možné vynechať).
         </div>
       )}
 

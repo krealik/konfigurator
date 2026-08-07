@@ -13,6 +13,7 @@ import {
   type Orientacia,
   type TypProduktu,
   type Strana,
+  type SmerVykyvu,
   type Prekazka,
 } from "./gate-config"
 
@@ -27,6 +28,8 @@ export interface GateInput {
   volaVlavo: number
   volaVpravo: number
   medzeraStred: number
+  /** Len dvojkrídlová brána — smer výkyvu krídel pri otváraní. */
+  smerVykyvu: SmerVykyvu
 
   presah: number
   stranaPosunu: Strana
@@ -138,6 +141,7 @@ export interface GateResult {
   priestorPriOtvoreni: number
   smerOtvarania?: Strana
   stranaPosunu?: Strana
+  smerVykyvu?: SmerVykyvu
   pohon: boolean
   prislusenstvoVybrane: PrislusenstvoRiadok[]
   varovania: string[]
@@ -218,7 +222,8 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
 
   // Koľajnica je štrukturálna súčasť posúvnej brány — nezávisí od pohonu.
   const prislusenstvoVybrane: PrislusenstvoRiadok[] = []
-  if (jePosuvna && vstup.kolajnica) {
+  // Koľajnica je povinná súčasť posúvnej brány — vždy sa objednáva, nedá sa vynechať.
+  if (jePosuvna) {
     prislusenstvoVybrane.push({ nazov: PRISLUSENSTVO_KOLAJNICA.nazov, cenaKs: PRISLUSENSTVO_KOLAJNICA.cena, mnozstvo: 1, spolu: PRISLUSENSTVO_KOLAJNICA.cena })
   }
   // Príslušenstvo pre malú bránku — nezávislé od pohonu (bránka sa vždy otvára ručne).
@@ -289,6 +294,7 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
     priestorPriOtvoreni: sirkaKridla,
     smerOtvarania: !jeBrana && !jePosuvna ? vstup.smerOtvarania : undefined,
     stranaPosunu: jePosuvna ? vstup.stranaPosunu : undefined,
+    smerVykyvu: jeBrana ? vstup.smerVykyvu : undefined,
     pohon: vstup.pohon && (jeBrana || jePosuvna),
     prislusenstvoVybrane,
     varovania,
