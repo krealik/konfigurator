@@ -246,7 +246,7 @@ export default function Page() {
             <div className="mb-4">
               <h2 className="mb-1 text-lg font-bold text-foreground">Scéna a prekážky</h2>
               <p className="text-sm text-muted-foreground">
-                Ťahaním nakresli obdĺžnik (stĺp, skriňa) alebo úzky ťah pre stenu. Po nakreslení sa zobrazí okienko na doladenie — priamo na mieste, bez skrolovania.
+                Klepni na prvý bod (napr. jeden stĺp), potom na druhý — appka dopočíta vzdialenosť. Po nakreslení sa zobrazí okienko na doladenie priamo na mieste. Existujúcu prekážku presunieš ťahaním.
               </p>
             </div>
             <div className="rounded-md border border-border bg-muted p-2 md:p-4">
@@ -259,22 +259,32 @@ export default function Page() {
               </ZoomCanvas>
             </div>
 
-            {prekazky.filter((p) => p.typ === "existujuci-stlp").length >= 2 && (() => {
-              const stlpy = prekazky.filter((p) => p.typ === "existujuci-stlp").sort((a, b) => a.poziciaOdKraja - b.poziciaOdKraja)
-              const lavy = stlpy[0], pravy = stlpy[stlpy.length - 1]
-              const odvodenaSirka = Math.max(0, Math.round(pravy.poziciaOdKraja - (lavy.poziciaOdKraja + lavy.sirka)))
+            {prekazky.length >= 2 && (() => {
+              const zoradene = [...prekazky].sort((a, b) => a.poziciaOdKraja - b.poziciaOdKraja)
+              const medzery = zoradene.slice(0, -1).map((p, i) => {
+                const dalsi = zoradene[i + 1]
+                const sirka = Math.max(0, Math.round(dalsi.poziciaOdKraja - (p.poziciaOdKraja + p.sirka)))
+                return { lavy: p, pravy: dalsi, sirka }
+              }).filter((m) => m.sirka > 0)
+              if (medzery.length === 0) return null
               return (
-                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
-                  <span className="text-sm text-foreground">
-                    Vzdialenosť medzi krajnými existujúcimi stĺpmi: <strong className="font-mono">{odvodenaSirka} mm</strong>
+                <div className="mt-4 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
+                  <span className="mb-2 block text-sm font-bold text-foreground">
+                    Vlož „{nazovProduktu(aktivna.vstup.typProduktu)}" do zakresleného priestoru:
                   </span>
-                  <button
-                    type="button"
-                    onClick={() => zmenVstup({ ...aktivna.vstup, svetlaSirka: odvodenaSirka })}
-                    className="rounded-md border-2 border-primary bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
-                  >
-                    Použiť ako svetlú šírku pre „{nazovProduktu(aktivna.vstup.typProduktu)}"
-                  </button>
+                  <div className="flex flex-col gap-2">
+                    {medzery.map((m, i) => (
+                      <button
+                        key={i}
+                        type="button"
+                        onClick={() => zmenVstup({ ...aktivna.vstup, svetlaSirka: m.sirka })}
+                        className="flex items-center justify-between gap-3 rounded-md border-2 border-input bg-background px-4 py-3 text-left text-sm font-semibold text-foreground hover:border-primary"
+                      >
+                        <span>„{m.lavy.nazov}" ↔ „{m.pravy.nazov}"</span>
+                        <span className="font-mono text-base font-bold text-primary">{m.sirka} mm</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
               )
             })()}

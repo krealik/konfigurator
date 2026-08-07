@@ -3,6 +3,7 @@
 import { useRef, useState } from "react"
 import { RAM_PROFIL_HRUBKA_MM, PRIECKA_VYSKA_OD_ZEME_MM, FARBA_RAM, najdiPovrch, KLUCKA_VYSKA_MM, PANT_OD_KRAJA_MM, type Prekazka } from "@/lib/gate-config"
 import type { GateInput, GateResult } from "@/lib/gate-calc"
+import { ZivaCiaraNahlad } from "@/components/gate-preview"
 
 interface PolozkaVypocitana {
   id: string
@@ -230,9 +231,10 @@ function bodDoMm(svg: SVGSVGElement, clientX: number, clientY: number, marginL: 
 
 export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, onPresunPrekazku, aktivnaId, onKlikPolozku }: Props) {
   const svgRef = useRef<SVGSVGElement>(null)
-  const [kreslimRect, setKreslimRect] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
   const [presuvam, setPresuvam] = useState<{ id: string; startX: number; startY: number; orig: Prekazka } | null>(null)
-  const [nastrojTyp] = useState<"obdlznik" | "ciara">("obdlznik")
+  const [bod1, setBod1] = useState<{ x: number; y: number } | null>(null)
+  const [zivyBod2, setZivyBod2] = useState<{ x: number; y: number } | null>(null)
+  const potlacKlikRef = useRef(false)
 
   // Rozmiestnenie produktov vedľa seba — každý má svoju šírku a začína za predchádzajúcim
   const pozicie: { id: string; offsetX: number; sirkaObjektu: number }[] = []
@@ -266,13 +268,12 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
 
   function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
     if (!kreslenie || !svgRef.current) return
-    ;(e.target as Element).setPointerCapture?.(e.pointerId)
     const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
     const zasiahnuta = onPresunPrekazku ? najdiPodBodom(x, y) : undefined
     if (zasiahnuta) {
+      ;(e.target as Element).setPointerCapture?.(e.pointerId)
       setPresuvam({ id: zasiahnuta.id, startX: x, startY: y, orig: zasiahnuta })
-    } else {
-      setKreslimRect({ x, y, w: 0, h: 0 })
+      potlacKlikRef.current = true
     }
   }
 
@@ -289,35 +290,36 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
       })
       return
     }
-    if (!kreslimRect) return
-    setKreslimRect((k) => k ? { ...k, w: x - k.x, h: y - k.y } : k)
+    if (bod1) setZivyBod2({ x, y })
   }
 
-  function onPointerUp(e: React.PointerEvent<SVGSVGElement>) {
-    if (!kreslenie) return
-    if (presuvam) {
-      setPresuvam(null)
+  function onPointerUp() {
+    if (presuvam) setPresuvam(null)
+  }
+
+  function onClick(e: React.MouseEvent<SVGSVGElement>) {
+    if (!kreslenie || !svgRef.current) return
+    if (potlacKlikRef.current) {
+      potlacKlikRef.current = false
       return
     }
-    if (kreslimRect && onPridajPrekazku) {
-      const absW = Math.abs(kreslimRect.w), absH = Math.abs(kreslimRect.h)
-      // Čiara: úzky ťah (w << h) alebo kliknutie bez pohybu
-      const jeUzky = absW < 40 && absH > 20
-      if (absW > 5 || absH > 5) {
-        const poziciaOdKraja = Math.round(Math.min(kreslimRect.x, kreslimRect.x + kreslimRect.w))
-        const sirka = Math.round(jeUzky ? Math.max(absW, 20) : absW)
-        const yTop = Math.min(kreslimRect.y, kreslimRect.y + kreslimRect.h)
-        const yBottom = Math.max(kreslimRect.y, kreslimRect.y + kreslimRect.h)
-        const vyskaOd = Math.round(Math.max(0, maxH - yBottom))
-        const vyskaDo = Math.round(Math.max(0, maxH - yTop))
-        const typ = jeUzky ? "ciara" as const : "obdlznik" as const
-        onPridajPrekazku(
-          { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: jeUzky ? "Stena" : "Prekážka", typ, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
-          { x: e.clientX, y: e.clientY },
-        )
-      }
+    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
+    if (!bod1) {
+      setBod1({ x, y })
+      setZivyBod2({ x, y })
+      return
     }
-    setKreslimRect(null)
+    const poziciaOdKraja = Math.round(Math.min(bod1.x, x))
+    const sirka = Math.round(Math.abs(x - bod1.x))
+    if (sirka > 10 && onPridajPrekazku) {
+      const vyskaDoDefault = Math.max(200, Math.min(maxH, 1500))
+      onPridajPrekazku(
+        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd: 0, vyskaDo: vyskaDoDefault },
+        { x: e.clientX, y: e.clientY },
+      )
+    }
+    setBod1(null)
+    setZivyBod2(null)
   }
 
   function handleClick(e: React.MouseEvent<SVGSVGElement>) {
@@ -347,7 +349,7 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onClick={handleClick}
+      onClick={(e) => { if (kreslenie) onClick(e); else handleClick(e) }}
     >
       <defs>
         <marker id="scArrowStart" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto"><path d="M6,0 L0,3 L6,6" fill="none" stroke="#383E42" strokeWidth="1.4" /></marker>
@@ -373,20 +375,8 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
           return <BrankaVScene key={pol.id} vstup={pol.vstup} vysledok={pol.vysledok} offsetX={poz.offsetX} maxH={maxH} stroke={stroke} fontSize={fontSize} aktivna={aktivna} />
         })}
 
-        {/* Kresliaci obdĺžnik */}
-        {kreslimRect && (
-          <rect
-            x={Math.min(kreslimRect.x, kreslimRect.x + kreslimRect.w)}
-            y={Math.min(kreslimRect.y, kreslimRect.y + kreslimRect.h)}
-            width={Math.abs(kreslimRect.w)}
-            height={Math.abs(kreslimRect.h)}
-            fill="rgba(56,62,66,0.15)"
-            stroke="#383E42"
-            strokeWidth={4}
-            strokeDasharray="14 10"
-          />
-        )}
-
+        {/* Živá náhľadová čiara medzi dvomi klikmi */}
+        {bod1 && zivyBod2 && <ZivaCiaraNahlad bod1={bod1} bod2={zivyBod2} fontSize={fontSize} stroke={stroke} />}
         {/* Legenda "klikni na produkt" keď nie je kreslenie */}
         {!kreslenie && polozky.length > 1 && (
           <text x={totalSceneW / 2} y={maxH + fontSize * 1.8} fontSize={fontSize * 0.6} textAnchor="middle" fontFamily="monospace" fill="#9AA0A6">
