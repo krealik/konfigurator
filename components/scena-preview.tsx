@@ -341,7 +341,7 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, o
     }
     if ((Math.abs(dx) > 10 || Math.abs(dy) > 10) && onPridajPrekazku) {
       onPridajPrekazku(
-        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov, typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
+        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov, typ: jeVodorovna ? ("obdlznik" as const) : ("ciara" as const), poziciaOdKraja, sirka, vyskaOd, vyskaDo },
         { x: e.clientX, y: e.clientY },
       )
     }
