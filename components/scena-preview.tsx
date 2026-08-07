@@ -14,7 +14,7 @@ interface Props {
   polozky: PolozkaVypocitana[]
   prekazky: Prekazka[]
   kreslenie: boolean
-  onPridajPrekazku?: (p: Prekazka) => void
+  onPridajPrekazku?: (p: Prekazka, screenPos: { x: number; y: number }) => void
   aktivnaId: string
   onKlikPolozku?: (id: string) => void
 }
@@ -261,7 +261,7 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, a
     setKreslimRect((k) => k ? { ...k, w: x - k.x, h: y - k.y } : k)
   }
 
-  function onPointerUp() {
+  function onPointerUp(e: React.PointerEvent<SVGSVGElement>) {
     if (!kreslenie) return
     if (kreslimRect && onPridajPrekazku) {
       const absW = Math.abs(kreslimRect.w), absH = Math.abs(kreslimRect.h)
@@ -275,7 +275,10 @@ export function ScenaPreview({ polozky, prekazky, kreslenie, onPridajPrekazku, a
         const vyskaOd = Math.round(Math.max(0, maxH - yBottom))
         const vyskaDo = Math.round(Math.max(0, maxH - yTop))
         const typ = jeUzky ? "ciara" as const : "obdlznik" as const
-        onPridajPrekazku({ id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: jeUzky ? "Stena" : "Prekážka", typ, poziciaOdKraja, sirka, vyskaOd, vyskaDo })
+        onPridajPrekazku(
+          { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: jeUzky ? "Stena" : "Prekážka", typ, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
+          { x: e.clientX, y: e.clientY },
+        )
       }
     }
     setKreslimRect(null)

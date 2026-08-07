@@ -1,13 +1,10 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { SIRKY_LAMIEL_MM, POVRCHY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana, type Prekazka } from "@/lib/gate-config"
+import { SIRKY_LAMIEL_MM, POVRCHY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana } from "@/lib/gate-config"
 import type { GateInput } from "@/lib/gate-calc"
-import { GateObstacles } from "@/components/gate-obstacles"
 
 interface Props {
-  prekazky: Prekazka[]
-  onZmenPrekazky: (p: Prekazka[]) => void
   vstup: GateInput
   onChange: (vstup: GateInput) => void
 }
@@ -131,16 +128,7 @@ export function GateForm(props: Props) {
         </div>
       </div>
 
-      <label className="block">
-        <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-muted-foreground">Názov zákazníka</span>
-        <input
-          type="text"
-          value={vstup.nazovZakaznika}
-          onChange={(e) => onChange({ ...vstup, nazovZakaznika: e.target.value })}
-          placeholder="napr. Ján Novák"
-          className="w-full rounded-md border-2 border-input bg-background px-4 py-4 text-lg font-semibold text-foreground outline-none focus:border-primary"
-        />
-      </label>
+      
 
       {/* --- Zameranie na mieste --- */}
       <div className="flex flex-col gap-4 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
@@ -234,14 +222,23 @@ export function GateForm(props: Props) {
         />
       </div>
 
-      {/* --- Prekážky na mieste --- */}
-      <div className="flex flex-col gap-3 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
-        <SectionTitle>Prekážky na mieste</SectionTitle>
-        <GateObstacles
-          prekazky={props.prekazky}
-          onChange={props.onZmenPrekazky}
-        />
-      </div>
+      {(jeBrana || jePosuvna) && (
+        <div>
+          <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-muted-foreground">Pohon (motor)</span>
+          <div className="grid grid-cols-2 gap-2">
+            {([{ v: false, nazov: "Bez pohonu" }, { v: true, nazov: "S pohonom" }] as const).map((o) => {
+              const active = vstup.pohon === o.v
+              return (
+                <button key={String(o.v)} type="button" onClick={() => onChange({ ...vstup, pohon: o.v })} aria-pressed={active}
+                  className={"rounded-md border-2 py-4 text-base font-bold transition-colors " + (active ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}>
+                  {o.nazov}
+                </button>
+              )
+            })}
+          </div>
+          <span className="mt-1.5 block text-sm text-muted-foreground">pripočíta sa k cenovej kalkulácii, montážnici to potrebujú vedieť vopred (elektrická prípojka)</span>
+        </div>
+      )}
 
       {jeBranka && (
         <div>

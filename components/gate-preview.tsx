@@ -10,8 +10,9 @@ interface Props {
   vysledok: GateResult
   /** Keď je true, náhľad je v móde kreslenia prekážok (ťahaním myšou/prstom). */
   kreslenie?: boolean
-  /** Zavolané po dokreslení novej prekážky (súradnice už prepočítané do mm priestoru krídla). */
-  onPridajPrekazku?: (p: Prekazka) => void
+  /** Zavolané po dokreslení novej prekážky (súradnice už prepočítané do mm priestoru krídla) —
+   *  spolu s pozíciou na obrazovke (px), kam sa má umiestniť potvrdzovací popover. */
+  onPridajPrekazku?: (p: Prekazka, screenPos: { x: number; y: number }) => void
 }
 
 function clamp(v: number, min: number, max: number) {
@@ -117,7 +118,7 @@ function useKreslenieProekazky(
   marginL: number,
   marginT: number,
   vyskaKridla: number,
-  onPridaj?: (p: Prekazka) => void,
+  onPridaj?: (p: Prekazka, screenPos: { x: number; y: number }) => void,
 ) {
   const [kreslim, setKreslim] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
 
@@ -134,7 +135,7 @@ function useKreslenieProekazky(
     setKreslim((k) => (k ? { ...k, w: x - k.x, h: y - k.y } : k))
   }
 
-  function onPointerUp() {
+  function onPointerUp(e: React.PointerEvent<SVGSVGElement>) {
     if (!aktivne) return
     if (kreslim && (Math.abs(kreslim.w) > 15 || Math.abs(kreslim.h) > 15) && onPridaj) {
       const poziciaOdKraja = Math.round(Math.min(kreslim.x, kreslim.x + kreslim.w))
@@ -143,7 +144,10 @@ function useKreslenieProekazky(
       const yBottom = Math.max(kreslim.y, kreslim.y + kreslim.h)
       const vyskaOd = Math.round(Math.max(0, vyskaKridla - yBottom))
       const vyskaDo = Math.round(Math.max(0, vyskaKridla - yTop))
-      onPridaj({ id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo })
+      onPridaj(
+        { id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", typ: "obdlznik" as const, poziciaOdKraja, sirka, vyskaOd, vyskaDo },
+        { x: e.clientX, y: e.clientY },
+      )
     }
     setKreslim(null)
   }

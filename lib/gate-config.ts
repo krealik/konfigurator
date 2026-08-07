@@ -30,6 +30,28 @@ export type TypProduktu = "branka" | "dvojkridlovaBrana" | "posuvnaBrana"
 /** Strana — použitá pre smer otvárania (bránka) aj stranu posunu (posúvna brána). */
 export type Strana = "vlavo" | "vpravo"
 
+export type SposobKotvenia = "murik" | "stlpiky-beton" | "existujuce-stlpy"
+export const SPOSOBY_KOTVENIA = [
+  { id: "murik", nazov: "Múrik" },
+  { id: "stlpiky-beton", nazov: "Stĺpiky do betónu" },
+  { id: "existujuce-stlpy", nazov: "Existujúce stĺpy" },
+] as const
+
+/** Údaje o zákazke, spoločné pre všetky produkty na nej — zadávajú sa raz. */
+export interface Zakaznik {
+  meno: string
+  adresa: string
+  sposobKotvenia: SposobKotvenia
+  poznamky: string
+}
+
+export const DEFAULTS_ZAKAZNIK: Zakaznik = {
+  meno: "",
+  adresa: "",
+  sposobKotvenia: "stlpiky-beton",
+  poznamky: "",
+}
+
 /** Typ prekážky: obdĺžnik (murovaný stĺp, skriňa…) alebo čiara (stena domu, okrúhly stĺp…). */
 export type TypPrekazky = "obdlznik" | "ciara"
 
@@ -60,7 +82,6 @@ export interface PolozkaSceny {
 
 export const DEFAULTS_POLOZKY = {
   typProduktu: "branka" as TypProduktu,
-  nazovZakaznika: "",
 
   // --- Zameranie na mieste ---
   svetlaSirka: 1300,
@@ -82,6 +103,9 @@ export const DEFAULTS_POLOZKY = {
   medzera: 30,
   povrch: "antracit" as PovrchId,
   orientacia: "vertikalne" as Orientacia,
+
+  /** Pohon (motor) — relevantné len pri dvojkrídlovej a posúvnej bráne, pripočíta sa k cene. */
+  pohon: false,
 }
 
 export const DEFAULTS = {
@@ -98,6 +122,7 @@ export const CENNIK = {
   instalacnyKitBranka: 150,
   instalacnyKitBrana: 200,
   instalacnyKitPosuvna: 350,
+  pohonPriplatok: 300,
 }
 
 export const KLUCKA_VYSKA_MM = 1050

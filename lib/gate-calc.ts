@@ -15,7 +15,6 @@ import {
 
 export interface GateInput {
   typProduktu: TypProduktu
-  nazovZakaznika: string
 
   // --- Zameranie na mieste ---
   svetlaSirka: number
@@ -37,6 +36,9 @@ export interface GateInput {
   medzera: number
   povrch: PovrchId
   orientacia: Orientacia
+
+  /** Pohon (motor) — relevantné len pri dvojkrídlovej a posúvnej bráne. */
+  pohon: boolean
 
   // Prekážky sú spoločné pre celú scénu — uchovávané v GateInput pre spätnú kompatibilitu.
   prekazky: Prekazka[]
@@ -87,6 +89,7 @@ export interface CenovaKalkulacia {
   profil: number
   lamely: number
   instalacnyKit: number
+  pohon: number
   spolu: number
 }
 
@@ -121,6 +124,7 @@ export interface GateResult {
   priestorPriOtvoreni: number
   smerOtvarania?: Strana
   stranaPosunu?: Strana
+  pohon: boolean
   varovania: string[]
 }
 
@@ -196,6 +200,8 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
     : jePosuvna
       ? CENNIK.instalacnyKitPosuvna
       : CENNIK.instalacnyKitBranka
+  // Pohon má zmysel len pri dvojkrídlovej a posúvnej bráne (bránka sa vždy otvára ručne).
+  const cenaPohonu = vstup.pohon && (jeBrana || jePosuvna) ? CENNIK.pohonPriplatok : 0
 
   return {
     typProduktu: vstup.typProduktu,
@@ -238,11 +244,13 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
       profil: profilTyce.pocetTyci * CENNIK.profilKs,
       lamely: lamelyTyce.pocetTyci * CENNIK.lamelaKs,
       instalacnyKit,
-      spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + instalacnyKit,
+      pohon: cenaPohonu,
+      spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + instalacnyKit + cenaPohonu,
     },
     priestorPriOtvoreni: sirkaKridla,
     smerOtvarania: !jeBrana && !jePosuvna ? vstup.smerOtvarania : undefined,
     stranaPosunu: jePosuvna ? vstup.stranaPosunu : undefined,
+    pohon: vstup.pohon && (jeBrana || jePosuvna),
     varovania,
   }
 }

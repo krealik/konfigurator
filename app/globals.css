@@ -199,5 +199,13 @@
   section {
     break-inside: avoid;
   }
+
+  /* Každá .print-page je samostatná strana vo viacstranovej zostave (cenová ponuka + výrobné listy). */
+  .print-page {
+    break-after: page;
+  }
+  .print-page:last-child {
+    break-after: auto;
+  }
 }
 
