@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { DEFAULTS } from "@/lib/gate-config"
+import type { Prekazka } from "@/lib/gate-config"
 import { vypocitajBranku, vypocitajZZamerania, type GateInput } from "@/lib/gate-calc"
 import { GateForm } from "@/components/gate-form"
 import { GatePreview } from "@/components/gate-preview"
@@ -32,6 +33,7 @@ export default function Page() {
   }), [vstup])
   const zameranie = useMemo(() => vypocitajZZamerania(bezpecnyVstup), [bezpecnyVstup])
   const vysledok = useMemo(() => vypocitajBranku(bezpecnyVstup, zameranie), [bezpecnyVstup, zameranie])
+  const [kreslenie, setKreslenie] = useState(false)
   const jeBrana = bezpecnyVstup.typProduktu === "dvojkridlovaBrana"
   const jePosuvna = bezpecnyVstup.typProduktu === "posuvnaBrana"
   const nazovProduktu = jeBrana ? "dvojkrídlovej brány" : jePosuvna ? "posúvnej brány" : "hliníkovej bránky"
@@ -51,7 +53,30 @@ export default function Page() {
             {vysledok.varovania.map((v) => <p key={v}>⚠ {v}</p>)}
           </div>
         )}
-        <div><h2 className="mb-4 text-lg font-bold text-foreground print:hidden">Náhľad</h2><div className="rounded-md border border-border bg-muted p-4 print:border-none print:bg-white print:p-0"><GatePreview vstup={bezpecnyVstup} vysledok={vysledok} /></div></div>
+        <div><h2 className="mb-4 text-lg font-bold text-foreground print:hidden">Náhľad</h2>
+          <div className="mb-4 flex flex-wrap items-center gap-3 print:hidden">
+            <button
+              type="button"
+              onClick={() => setKreslenie((v) => !v)}
+              aria-pressed={kreslenie}
+              className={
+                "rounded-md border-2 px-4 py-2.5 text-sm font-bold transition-colors " +
+                (kreslenie ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")
+              }
+            >
+              {kreslenie ? "✕ Hotovo" : "✎ Kresliť prekážky"}
+            </button>
+            {kreslenie && <span className="text-sm text-muted-foreground">Ťahaním myšou/prstom priamo v náhľade nakresli stĺp, stenu, elektroskriňu…</span>}
+          </div>
+          <div className="rounded-md border border-border bg-muted p-4 print:border-none print:bg-white print:p-0">
+            <GatePreview
+              vstup={bezpecnyVstup}
+              vysledok={vysledok}
+              kreslenie={kreslenie}
+              onPridajPrekazku={(p: Prekazka) => setVstup((v) => ({ ...v, prekazky: [...(v.prekazky ?? []), p] }))}
+            />
+          </div>
+        </div>
         <GateResults vstup={bezpecnyVstup} vysledok={vysledok} />
       </section>
     </main>

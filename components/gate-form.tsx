@@ -236,8 +236,6 @@ export function GateForm({ vstup, onChange }: Props) {
         <SectionTitle>Prekážky na mieste</SectionTitle>
         <GateObstacles
           prekazky={vstup.prekazky}
-          sirkaPriestoru={vstup.svetlaSirka}
-          vyskaPriestoru={vstup.celkovaVyska}
           onChange={(prekazky: Prekazka[]) => onChange({ ...vstup, prekazky })}
         />
       </div>

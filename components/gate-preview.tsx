@@ -1,10 +1,18 @@
 "use client"
 
+import { useRef, useState } from "react"
 import { RAM_PROFIL_HRUBKA_MM, PRIECKA_VYSKA_OD_ZEME_MM, FARBA_RAM, najdiPovrch, KLUCKA_VYSKA_MM, PANT_OD_KRAJA_MM, type Prekazka } from "@/lib/gate-config"
 import type { GateInput, GateResult } from "@/lib/gate-calc"
 
 const CUT_COLOR = "#E63946"
-interface Props { vstup: GateInput; vysledok: GateResult }
+interface Props {
+  vstup: GateInput
+  vysledok: GateResult
+  /** Keď je true, náhľad je v móde kreslenia prekážok (ťahaním myšou/prstom). */
+  kreslenie?: boolean
+  /** Zavolané po dokreslení novej prekážky (súradnice už prepočítané do mm priestoru krídla). */
+  onPridajPrekazku?: (p: Prekazka) => void
+}
 
 function clamp(v: number, min: number, max: number) {
   return Math.min(max, Math.max(min, v))
@@ -74,13 +82,89 @@ function PrekazkyLayer({ prekazky, vyskaKridla }: { prekazky: Prekazka[]; vyskaK
   )
 }
 
-export function GatePreview({ vstup, vysledok }: Props) {
-  if (vstup.typProduktu === "dvojkridlovaBrana") return <DvojkridlovaPreview vstup={vstup} vysledok={vysledok} />
-  if (vstup.typProduktu === "posuvnaBrana") return <PosuvnaPreview vstup={vstup} vysledok={vysledok} />
-  return <BrankaPreview vstup={vstup} vysledok={vysledok} />
+/**
+ * Prevedie súradnice myši/prsta (klientské px) na mm súradnice vo vnútri prekreslenej skupiny
+ * krídla (rovnaký priestor ako sirkaKridla/vyskaKridla a PrekazkyLayer) — odpočíta okraje aj
+ * transform celého SVG (viewBox, zoom, veľkosť na obrazovke).
+ */
+function bodDoMm(svg: SVGSVGElement, clientX: number, clientY: number, marginL: number, marginT: number) {
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return { x: 0, y: 0 }
+  const pt = svg.createSVGPoint()
+  pt.x = clientX
+  pt.y = clientY
+  const p = pt.matrixTransform(ctm.inverse())
+  return { x: p.x - marginL, y: p.y - marginT }
 }
 
-function BrankaPreview({ vstup, vysledok }: Props) {
+/**
+ * Spoločná logika kreslenia prekážky ťahaním priamo v náhľade — jeden hook pre všetky tri
+ * varianty (bránka, dvojkrídlová, posúvna), líšia sa len svojím marginL/marginT/vyskaKridla.
+ */
+function useKreslenieProekazky(
+  svgRef: React.RefObject<SVGSVGElement | null>,
+  aktivne: boolean,
+  marginL: number,
+  marginT: number,
+  vyskaKridla: number,
+  onPridaj?: (p: Prekazka) => void,
+) {
+  const [kreslim, setKreslim] = useState<{ x: number; y: number; w: number; h: number } | null>(null)
+
+  function onPointerDown(e: React.PointerEvent<SVGSVGElement>) {
+    if (!aktivne || !svgRef.current) return
+    ;(e.target as Element).setPointerCapture?.(e.pointerId)
+    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
+    setKreslim({ x, y, w: 0, h: 0 })
+  }
+
+  function onPointerMove(e: React.PointerEvent<SVGSVGElement>) {
+    if (!aktivne || !kreslim || !svgRef.current) return
+    const { x, y } = bodDoMm(svgRef.current, e.clientX, e.clientY, marginL, marginT)
+    setKreslim((k) => (k ? { ...k, w: x - k.x, h: y - k.y } : k))
+  }
+
+  function onPointerUp() {
+    if (!aktivne) return
+    if (kreslim && (Math.abs(kreslim.w) > 15 || Math.abs(kreslim.h) > 15) && onPridaj) {
+      const poziciaOdKraja = Math.round(Math.min(kreslim.x, kreslim.x + kreslim.w))
+      const sirka = Math.round(Math.abs(kreslim.w))
+      const yTop = Math.min(kreslim.y, kreslim.y + kreslim.h)
+      const yBottom = Math.max(kreslim.y, kreslim.y + kreslim.h)
+      const vyskaOd = Math.round(Math.max(0, vyskaKridla - yBottom))
+      const vyskaDo = Math.round(Math.max(0, vyskaKridla - yTop))
+      onPridaj({ id: `p${Date.now()}${Math.round(Math.random() * 1000)}`, nazov: "Prekážka", poziciaOdKraja, sirka, vyskaOd, vyskaDo })
+    }
+    setKreslim(null)
+  }
+
+  return { kreslim, onPointerDown, onPointerMove, onPointerUp }
+}
+
+/** Rozkreslovaný (ešte nepotvrdený) obdĺžnik prekážky počas ťahania. */
+function KresliaciObdlznik({ kreslim }: { kreslim: { x: number; y: number; w: number; h: number } | null }) {
+  if (!kreslim) return null
+  return (
+    <rect
+      x={Math.min(kreslim.x, kreslim.x + kreslim.w)}
+      y={Math.min(kreslim.y, kreslim.y + kreslim.h)}
+      width={Math.abs(kreslim.w)}
+      height={Math.abs(kreslim.h)}
+      fill="rgba(56,62,66,0.2)"
+      stroke="#383E42"
+      strokeWidth={4}
+      strokeDasharray="14 10"
+    />
+  )
+}
+
+export function GatePreview({ vstup, vysledok, kreslenie, onPridajPrekazku }: Props) {
+  if (vstup.typProduktu === "dvojkridlovaBrana") return <DvojkridlovaPreview vstup={vstup} vysledok={vysledok} kreslenie={kreslenie} onPridajPrekazku={onPridajPrekazku} />
+  if (vstup.typProduktu === "posuvnaBrana") return <PosuvnaPreview vstup={vstup} vysledok={vysledok} kreslenie={kreslenie} onPridajPrekazku={onPridajPrekazku} />
+  return <BrankaPreview vstup={vstup} vysledok={vysledok} kreslenie={kreslenie} onPridajPrekazku={onPridajPrekazku} />
+}
+
+function BrankaPreview({ vstup, vysledok, kreslenie, onPridajPrekazku }: Props) {
   const sirkaKridla = vysledok.sirkaKridla, vyskaKridla = vysledok.vyskaKridla
   const { sirkaLamely } = vstup
   const povrch = najdiPovrch(vstup.povrch)
@@ -105,10 +189,14 @@ function BrankaPreview({ vstup, vysledok }: Props) {
   const fill = povrch.drevo ? "url(#drevo)" : povrch.farba
   // Kovanie: pevná minimálna veľkosť v mm-jednotkách viewboxu, aby bolo vidno aj pri veľkých bránach.
   const hwSize = clamp(scale * 0.045, 40, 70)
-  return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad bránky ${sirkaKridla} × ${vyskaKridla} mm`}>
+  const svgRef = useRef<SVGSVGElement>(null)
+  const { kreslim, onPointerDown, onPointerMove, onPointerUp } = useKreslenieProekazky(svgRef, !!kreslenie, marginL, marginT, vyskaKridla, onPridajPrekazku)
+  return <svg ref={svgRef} viewBox={`0 0 ${vbW} ${vbH}`} className={"h-auto w-full" + (kreslenie ? " cursor-crosshair touch-none" : "")} role="img" aria-label={`Náhľad bránky ${sirkaKridla} × ${vyskaKridla} mm`}
+    onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
     <defs><DimArrowDefs /><linearGradient id="drevo" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba}/><stop offset="45%" stopColor="rgba(255,255,255,0.18)"/><stop offset="55%" stopColor={povrch.farba}/><stop offset="100%" stopColor="rgba(0,0,0,0.22)"/></linearGradient></defs>
     <g transform={`translate(${marginL} ${marginT})`}>
       <PrekazkyLayer prekazky={vstup.prekazky} vyskaKridla={vyskaKridla} />
+      <KresliaciObdlznik kreslim={kreslim} />
       <rect width={sirkaKridla} height={vyskaKridla} fill="white" />
       {lamely.map((pos, i) => <rect key={i} x={vert ? pos : innerX} y={vert ? innerY : pos} width={vert ? sirkaLamely : innerW} height={vert ? innerH : sirkaLamely} fill={fill} stroke="rgba(0,0,0,.18)" strokeWidth={stroke*.5}/>) }
       <g fill={FARBA_RAM}><rect width={ram} height={vyskaKridla}/><rect x={sirkaKridla-ram} width={ram} height={vyskaKridla}/><rect x={ram} width={sirkaKridla-2*ram} height={ram}/><rect x={ram} y={vyskaKridla-ram} width={sirkaKridla-2*ram} height={ram}/></g>
@@ -167,7 +255,7 @@ function BrankaPreview({ vstup, vysledok }: Props) {
   </svg>
 }
 
-function DvojkridlovaPreview({ vstup, vysledok }: Props) {
+function DvojkridlovaPreview({ vstup, vysledok, kreslenie, onPridajPrekazku }: Props) {
   const wingW = vysledok.sirkaKridla, h = vysledok.vyskaKridla, ram = RAM_PROFIL_HRUBKA_MM
   const totalW = wingW * 2 + vstup.medzeraStred
   const povrch = najdiPovrch(vstup.povrch), fill = povrch.drevo ? "url(#drevoBig)" : povrch.farba
@@ -177,6 +265,8 @@ function DvojkridlovaPreview({ vstup, vysledok }: Props) {
   const stroke = clamp(scale / 340, 2.2, 5), fontSize = clamp(scale / 26, 32, 58), cutFont = fontSize * 0.6
   const tick = fontSize * 0.9
   const innerW = Math.max(0, wingW - 2 * ram)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const { kreslim, onPointerDown, onPointerMove, onPointerUp } = useKreslenieProekazky(svgRef, !!kreslenie, marginL, marginT, h, onPridajPrekazku)
   // PRIECKA_VYSKA_OD_ZEME_MM je vzdialenosť OD ZEME po SPODNÚ hranu priečky.
   // V SVG rastie Y nadol (Y=0 je vrch, Y=h je zem) — treba prepočítať na súradnice zhora.
   const priackaSpodnaHranaY = h - PRIECKA_VYSKA_OD_ZEME_MM
@@ -208,10 +298,12 @@ function DvojkridlovaPreview({ vstup, vysledok }: Props) {
     </g>
   </g>
 
-  return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad dvojkrídlovej brány ${totalW} × ${h} mm`}>
+  return <svg viewBox={`0 0 ${vbW} ${vbH}`} className={"h-auto w-full" + (kreslenie ? " cursor-crosshair touch-none" : "")} role="img" aria-label={`Náhľad dvojkrídlovej brány ${totalW} × ${h} mm`}
+    ref={svgRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
     <defs><DimArrowDefs /><linearGradient id="drevoBig" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba} /><stop offset="45%" stopColor="rgba(255,255,255,0.18)" /><stop offset="55%" stopColor={povrch.farba} /><stop offset="100%" stopColor="rgba(0,0,0,0.22)" /></linearGradient></defs>
     <g transform={`translate(${marginL} ${marginT})`}>
       <PrekazkyLayer prekazky={vstup.prekazky} vyskaKridla={h} />
+      <KresliaciObdlznik kreslim={kreslim} />
       {wing(0, 0)}{wing(wingW + vstup.medzeraStred, 1)}
       {/* Medzera v strede (styk dvoch krídel v strede brány) — dve čiary s medzerou namiesto jednej. */}
       <line x1={wingW} y1={0} x2={wingW} y2={h} stroke="rgba(0,0,0,.35)" strokeWidth={stroke} />
@@ -245,7 +337,7 @@ function DvojkridlovaPreview({ vstup, vysledok }: Props) {
   </svg>
 }
 
-function PosuvnaPreview({ vstup, vysledok }: Props) {
+function PosuvnaPreview({ vstup, vysledok, kreslenie, onPridajPrekazku }: Props) {
   const sirkaKridla = vysledok.sirkaKridla, vyskaKridla = vysledok.vyskaKridla
   const { sirkaLamely } = vstup
   const povrch = najdiPovrch(vstup.povrch)
@@ -266,6 +358,8 @@ function PosuvnaPreview({ vstup, vysledok }: Props) {
   const vbW = sirkaKridla + marginL + marginR, vbH = vyskaKridla + marginT + marginB
   const lamely: number[] = []
   for (let i = 0; i < vysledok.pocetLamiel; i++) lamely.push(innerY + vysledok.skutocnaMedzera * (i + 1) + sirkaLamely * i)
+  const svgRef = useRef<SVGSVGElement>(null)
+  const { kreslim, onPointerDown, onPointerMove, onPointerUp } = useKreslenieProekazky(svgRef, !!kreslenie, marginL, marginT, vyskaKridla, onPridajPrekazku)
 
   // Priestor na zasunutie — na strane posunu, od okraja krídla.
   const zasunX1 = doprava ? sirkaKridla : -sirkaKridla
@@ -273,10 +367,12 @@ function PosuvnaPreview({ vstup, vysledok }: Props) {
   const arrowX1 = doprava ? sirkaKridla + tick : -tick
   const arrowX2 = doprava ? sirkaKridla * 1.6 : -sirkaKridla * 0.6
 
-  return <svg viewBox={`0 0 ${vbW} ${vbH}`} className="h-auto w-full" role="img" aria-label={`Náhľad posúvnej brány ${sirkaKridla} × ${vyskaKridla} mm`}>
+  return <svg viewBox={`0 0 ${vbW} ${vbH}`} className={"h-auto w-full" + (kreslenie ? " cursor-crosshair touch-none" : "")} role="img" aria-label={`Náhľad posúvnej brány ${sirkaKridla} × ${vyskaKridla} mm`}
+    ref={svgRef} onPointerDown={onPointerDown} onPointerMove={onPointerMove} onPointerUp={onPointerUp}>
     <defs><DimArrowDefs /><linearGradient id="drevoPosuv" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stopColor={povrch.farba}/><stop offset="45%" stopColor="rgba(255,255,255,0.18)"/><stop offset="55%" stopColor={povrch.farba}/><stop offset="100%" stopColor="rgba(0,0,0,0.22)"/></linearGradient></defs>
     <g transform={`translate(${marginL} ${marginT})`}>
       <PrekazkyLayer prekazky={vstup.prekazky} vyskaKridla={vyskaKridla} />
+      <KresliaciObdlznik kreslim={kreslim} />
       <rect width={sirkaKridla} height={vyskaKridla} fill="white" />
       {lamely.map((pos, i) => <rect key={i} x={innerX} y={pos} width={innerW} height={sirkaLamely} fill={fill} stroke="rgba(0,0,0,.18)" strokeWidth={stroke*.5}/>)}
       <g fill={FARBA_RAM}><rect width={ram} height={vyskaKridla}/><rect x={sirkaKridla-ram} width={ram} height={vyskaKridla}/><rect x={ram} width={sirkaKridla-2*ram} height={ram}/><rect x={ram} y={vyskaKridla-ram} width={sirkaKridla-2*ram} height={ram}/></g>
