@@ -70,13 +70,24 @@ function PrekazkyLayer({ prekazky, vyskaKridla }: { prekazky: Prekazka[]; vyskaK
       {prekazky.map((p) => {
         const y = vyskaKridla - p.vyskaDo
         const h = Math.max(0, p.vyskaDo - p.vyskaOd)
-        if ((p.typ ?? "obdlznik") === "ciara") {
+        if (p.typ === "ciara") {
           // Čiara (stena, stĺp) — zvislá čiara s hrúbkou
           const cx = p.poziciaOdKraja + p.sirka / 2
           return (
             <g key={p.id}>
               <line x1={cx} y1={y} x2={cx} y2={y + h} stroke="#5B6166" strokeWidth={Math.max(p.sirka, 3)} />
               <text x={cx} y={y - fontSize * 0.4} fontSize={fontSize} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">{p.nazov}</text>
+            </g>
+          )
+        }
+        if (p.typ === "existujuci-stlp") {
+          // Existujúci stĺp — referenčný bod (plná výplň, iná farba), z neho sa odvodzuje svetlá šírka.
+          return (
+            <g key={p.id}>
+              <rect x={p.poziciaOdKraja} y={y} width={p.sirka} height={h} fill="#8B5E34" stroke="#5C3A1E" strokeWidth={2.5} />
+              <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5C3A1E">
+                {p.nazov}
+              </text>
             </g>
           )
         }

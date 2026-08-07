@@ -4,6 +4,8 @@ import {
   LAMELA_ZASUNUTIE_MM,
   PRIECKA_VYSKA_OD_ZEME_MM,
   CENNIK,
+  PRISLUSENSTVO_POHONU,
+  PRISLUSENSTVO_KOLAJNICA,
   najdiPovrch,
   type SirkaLamely,
   type PovrchId,
@@ -39,6 +41,10 @@ export interface GateInput {
 
   /** Pohon (motor) — relevantné len pri dvojkrídlovej a posúvnej bráne. */
   pohon: boolean
+  /** Koľajnica/vodiaca lišta — len posúvna brána. */
+  kolajnica: boolean
+  /** Vybrané príslušenstvo k pohonu: id položky → množstvo. */
+  prislusenstvo: Record<string, number>
 
   // Prekážky sú spoločné pre celú scénu — uchovávané v GateInput pre spätnú kompatibilitu.
   prekazky: Prekazka[]
@@ -85,11 +91,18 @@ export interface MaterialPolozka {
   cenaSpolu: number
 }
 
+export interface PrislusenstvoRiadok {
+  nazov: string
+  cenaKs: number
+  mnozstvo: number
+  spolu: number
+}
+
 export interface CenovaKalkulacia {
   profil: number
   lamely: number
   instalacnyKit: number
-  pohon: number
+  prislusenstvo: number
   spolu: number
 }
 
@@ -125,6 +138,7 @@ export interface GateResult {
   smerOtvarania?: Strana
   stranaPosunu?: Strana
   pohon: boolean
+  prislusenstvoVybrane: PrislusenstvoRiadok[]
   varovania: string[]
 }
 
@@ -200,8 +214,23 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
     : jePosuvna
       ? CENNIK.instalacnyKitPosuvna
       : CENNIK.instalacnyKitBranka
-  // Pohon má zmysel len pri dvojkrídlovej a posúvnej bráne (bránka sa vždy otvára ručne).
-  const cenaPohonu = vstup.pohon && (jeBrana || jePosuvna) ? CENNIK.pohonPriplatok : 0
+
+  // Koľajnica je štrukturálna súčasť posúvnej brány — nezávisí od pohonu.
+  const prislusenstvoVybrane: PrislusenstvoRiadok[] = []
+  if (jePosuvna && vstup.kolajnica) {
+    prislusenstvoVybrane.push({ nazov: PRISLUSENSTVO_KOLAJNICA.nazov, cenaKs: PRISLUSENSTVO_KOLAJNICA.cena, mnozstvo: 1, spolu: PRISLUSENSTVO_KOLAJNICA.cena })
+  }
+  // Príslušenstvo k pohonu — len keď je pohon zapnutý.
+  if (vstup.pohon && (jeBrana || jePosuvna)) {
+    const zoznam = jePosuvna ? PRISLUSENSTVO_POHONU.posuvnaBrana : PRISLUSENSTVO_POHONU.dvojkridlovaBrana
+    for (const polozka of zoznam) {
+      const mnozstvo = vstup.prislusenstvo[polozka.id] ?? 0
+      if (mnozstvo > 0) {
+        prislusenstvoVybrane.push({ nazov: polozka.nazov, cenaKs: polozka.cena, mnozstvo, spolu: polozka.cena * mnozstvo })
+      }
+    }
+  }
+  const cenaPrislusenstva = prislusenstvoVybrane.reduce((s, p) => s + p.spolu, 0)
 
   return {
     typProduktu: vstup.typProduktu,
@@ -244,13 +273,14 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
       profil: profilTyce.pocetTyci * CENNIK.profilKs,
       lamely: lamelyTyce.pocetTyci * CENNIK.lamelaKs,
       instalacnyKit,
-      pohon: cenaPohonu,
-      spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + instalacnyKit + cenaPohonu,
+      prislusenstvo: cenaPrislusenstva,
+      spolu: profilTyce.pocetTyci * CENNIK.profilKs + lamelyTyce.pocetTyci * CENNIK.lamelaKs + instalacnyKit + cenaPrislusenstva,
     },
     priestorPriOtvoreni: sirkaKridla,
     smerOtvarania: !jeBrana && !jePosuvna ? vstup.smerOtvarania : undefined,
     stranaPosunu: jePosuvna ? vstup.stranaPosunu : undefined,
     pohon: vstup.pohon && (jeBrana || jePosuvna),
+    prislusenstvoVybrane,
     varovania,
   }
 }

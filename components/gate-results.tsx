@@ -55,7 +55,9 @@ export function GateResults({ vstup, vysledok }: Props) {
       <ParamRow label={`Profil 50×60mm (${vysledok.material.profil.pocetTyci}× ${vysledok.material.profil.cenaKs}€)`} value={`${fmt(vysledok.cena.profil)} €`} />
       <ParamRow label={`Lamely (${vysledok.material.lamely.pocetTyci}× ${vysledok.material.lamely.cenaKs}€)`} value={`${fmt(vysledok.cena.lamely)} €`} />
       <ParamRow label={`Inštalačný kit (${nazovProduktu(vstup.typProduktu).toLowerCase()})`} value={`${fmt(vysledok.cena.instalacnyKit)} €`} />
-      {vysledok.pohon && <ParamRow label="Pohon (motor)" value={`${fmt(vysledok.cena.pohon)} €`} />}
+      {vysledok.prislusenstvoVybrane.map((p) => (
+        <ParamRow key={p.nazov} label={p.mnozstvo > 1 ? `${p.nazov} (${p.mnozstvo}×)` : p.nazov} value={`${fmt(p.spolu)} €`} />
+      ))}
       <div className="flex items-center justify-between gap-4 py-3"><span className="text-sm font-semibold text-foreground">Spolu (materiál)</span><span className="font-mono text-xl font-bold tabular-nums text-primary">{fmt(vysledok.cena.spolu)} €</span></div>
     </div><p className="mt-2 text-xs text-muted-foreground">Orientačný podklad pre cenovú ponuku — bez práce/montáže a bez DPH.</p></section>
   </div>

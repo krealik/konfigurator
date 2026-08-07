@@ -140,6 +140,25 @@ export function PrintZostava({ zakaznik, polozky }: Props) {
             </tbody>
           </table>
 
+          {p.vysledok.prislusenstvoVybrane.length > 0 && (
+            <table className="mb-4 w-full border-collapse text-sm">
+              <thead>
+                <tr className="border-b-2 border-black text-left">
+                  <th className="py-2">Príslušenstvo na doobjednanie</th>
+                  <th className="py-2 text-right">Množstvo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {p.vysledok.prislusenstvoVybrane.map((pr) => (
+                  <tr key={pr.nazov} className="border-b border-black/30">
+                    <td className="py-1.5">{pr.nazov}</td>
+                    <td className="py-1.5 text-right font-mono">{pr.mnozstvo}× ({fmt(pr.spolu)} €)</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+
           <div className="grid grid-cols-2 gap-4 text-sm">
             <p><strong>Spôsob kotvenia:</strong> {nazovKotvenia(zakaznik.sposobKotvenia)}</p>
             <p><strong>Pohon:</strong> {p.vysledok.pohon ? "Áno" : "Nie"}</p>

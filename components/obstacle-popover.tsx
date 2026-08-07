@@ -55,16 +55,16 @@ export function ObstaclePopover({ navrh, screenPos, onChange, onConfirm, onCance
           className="w-full rounded border-2 border-input bg-background px-3 py-2 text-sm font-bold text-foreground outline-none focus:border-primary"
         />
 
-        <div className="grid grid-cols-2 gap-2">
-          {(["obdlznik", "ciara"] as TypPrekazky[]).map((t) => (
+        <div className="grid grid-cols-3 gap-2">
+          {(["obdlznik", "ciara", "existujuci-stlp"] as TypPrekazky[]).map((t) => (
             <button
               key={t}
               type="button"
-              onClick={() => onChange({ ...navrh, typ: t })}
+              onClick={() => onChange({ ...navrh, typ: t, nazov: t === "existujuci-stlp" && navrh.nazov === "Prekážka" ? "Existujúci stĺp" : navrh.nazov })}
               className={"rounded border-2 py-1.5 text-xs font-bold transition-colors " +
                 (navrh.typ === t ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}
             >
-              {t === "obdlznik" ? "⬜ Obdĺžnik" : "⏐ Čiara / stena"}
+              {t === "obdlznik" ? "⬜ Obdĺžnik" : t === "ciara" ? "⏐ Čiara" : "🪨 Stĺp"}
             </button>
           ))}
         </div>

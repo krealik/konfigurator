@@ -204,6 +204,12 @@ function PrekazkyLayer({ prekazky, maxH, fontSize, stroke }: { prekazky: Prekazk
       }
       const y = maxH - p.vyskaDo
       const h = Math.max(0, p.vyskaDo - p.vyskaOd)
+      if (p.typ === "existujuci-stlp") {
+        return <g key={p.id}>
+          <rect x={p.poziciaOdKraja} y={y} width={p.sirka} height={h} fill="#8B5E34" stroke="#5C3A1E" strokeWidth={stroke} />
+          <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5C3A1E">{p.nazov}</text>
+        </g>
+      }
       return <g key={p.id}>
         <rect x={p.poziciaOdKraja} y={y} width={p.sirka} height={h} fill="rgba(91,97,102,0.2)" stroke="#5B6166" strokeWidth={stroke} strokeDasharray="10 7" />
         <text x={p.poziciaOdKraja + p.sirka / 2} y={y - fontSize * 0.4} fontSize={fontSize * 0.8} textAnchor="middle" fontFamily="monospace" fontWeight={700} fill="#5B6166">{p.nazov}</text>

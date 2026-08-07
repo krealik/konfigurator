@@ -251,6 +251,26 @@ export default function Page() {
               )}
             </div>
 
+            {prekazky.filter((p) => p.typ === "existujuci-stlp").length >= 2 && (() => {
+              const stlpy = prekazky.filter((p) => p.typ === "existujuci-stlp").sort((a, b) => a.poziciaOdKraja - b.poziciaOdKraja)
+              const lavy = stlpy[0], pravy = stlpy[stlpy.length - 1]
+              const odvodenaSirka = Math.max(0, Math.round(pravy.poziciaOdKraja - (lavy.poziciaOdKraja + lavy.sirka)))
+              return (
+                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
+                  <span className="text-sm text-foreground">
+                    Vzdialenosť medzi krajnými existujúcimi stĺpmi: <strong className="font-mono">{odvodenaSirka} mm</strong>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => zmenVstup({ ...aktivna.vstup, svetlaSirka: odvodenaSirka })}
+                    className="rounded-md border-2 border-primary bg-primary px-4 py-2 text-sm font-bold text-primary-foreground hover:opacity-90"
+                  >
+                    Použiť ako svetlú šírku pre „{nazovProduktu(aktivna.vstup.typProduktu)}"
+                  </button>
+                </div>
+              )
+            })()}
+
             {prekazky.length > 0 && (
               <div className="mt-6">
                 <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-muted-foreground">Zakreslené prekážky — doladiť/zmazať</h3>

@@ -52,8 +52,36 @@ export const DEFAULTS_ZAKAZNIK: Zakaznik = {
   poznamky: "",
 }
 
-/** Typ prekážky: obdĺžnik (murovaný stĺp, skriňa…) alebo čiara (stena domu, okrúhly stĺp…). */
-export type TypPrekazky = "obdlznik" | "ciara"
+/** Jedna položka voliteľného príslušenstva (k pohonu, alebo štrukturálna ako koľajnica). */
+export interface PrislusenstvoPolozka {
+  id: string
+  nazov: string
+  /** Orientačná cena (€/ks) — zatiaľ hrubý odhad, doladí sa neskôr podľa reálneho cenníka. */
+  cena: number
+  /** Ak true, dá sa zvoliť množstvo (napr. diaľkový ovládač); inak je to jednoducho zapnuté/vypnuté. */
+  mnozstvo?: boolean
+}
+
+/** Koľajnica/vodiaca lišta — štrukturálna súčasť posúvnej brány, potrebná aj bez pohonu. */
+export const PRISLUSENSTVO_KOLAJNICA: PrislusenstvoPolozka = { id: "kolajnica", nazov: "Koľajnica / vodiaca lišta", cena: 180 }
+
+/** Príslušenstvo k pohonu — líši sa podľa typu brány, relevantné len keď je zapnutý pohon. */
+export const PRISLUSENSTVO_POHONU: Record<"dvojkridlovaBrana" | "posuvnaBrana", PrislusenstvoPolozka[]> = {
+  dvojkridlovaBrana: [
+    { id: "ramena", nazov: "Ramená pohonu (pár)", cena: 250 },
+    { id: "fotobunky", nazov: "Fotobunky (svetelné senzory)", cena: 80 },
+    { id: "ovladac", nazov: "Diaľkový ovládač", cena: 20, mnozstvo: true },
+  ],
+  posuvnaBrana: [
+    { id: "motor", nazov: "Motor pohonu", cena: 350 },
+    { id: "fotobunky", nazov: "Fotobunky (svetelné senzory)", cena: 80 },
+    { id: "stop", nazov: "STOP tlačidlo", cena: 25 },
+    { id: "ovladac", nazov: "Diaľkový ovládač", cena: 20, mnozstvo: true },
+  ],
+}
+
+/** Typ prekážky: obdĺžnik (murovaný stĺp, skriňa…), čiara (stena domu…) alebo existujúci stĺp (referenčný bod). */
+export type TypPrekazky = "obdlznik" | "ciara" | "existujuci-stlp"
 
 /**
  * Prekážka na mieste osadenia (stĺp, stena domu, elektroskriňa…).
@@ -104,8 +132,12 @@ export const DEFAULTS_POLOZKY = {
   povrch: "antracit" as PovrchId,
   orientacia: "vertikalne" as Orientacia,
 
-  /** Pohon (motor) — relevantné len pri dvojkrídlovej a posúvnej bráne, pripočíta sa k cene. */
+  /** Pohon (motor) — relevantné len pri dvojkrídlovej a posúvnej bráne, otvára zoznam príslušenstva. */
   pohon: false,
+  /** Koľajnica/vodiaca lišta — len posúvna brána; štrukturálna súčasť, potrebná aj bez pohonu. */
+  kolajnica: true,
+  /** Vybrané príslušenstvo k pohonu: id položky → množstvo (1 pre bežný checkbox, viac pri ovládačoch). */
+  prislusenstvo: {} as Record<string, number>,
 }
 
 export const DEFAULTS = {
@@ -122,7 +154,6 @@ export const CENNIK = {
   instalacnyKitBranka: 150,
   instalacnyKitBrana: 200,
   instalacnyKitPosuvna: 350,
-  pohonPriplatok: 300,
 }
 
 export const KLUCKA_VYSKA_MM = 1050

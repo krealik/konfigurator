@@ -62,8 +62,8 @@ export function GateObstacles({ prekazky, onChange }: Props) {
                 </button>
               </div>
               {/* Typ prekážky */}
-              <div className="mb-2 grid grid-cols-2 gap-2">
-                {(["obdlznik", "ciara"] as TypPrekazky[]).map((t) => (
+              <div className="mb-2 grid grid-cols-3 gap-2">
+                {(["obdlznik", "ciara", "existujuci-stlp"] as TypPrekazky[]).map((t) => (
                   <button
                     key={t}
                     type="button"
@@ -71,7 +71,7 @@ export function GateObstacles({ prekazky, onChange }: Props) {
                     className={"rounded border-2 py-1.5 text-xs font-bold transition-colors " +
                       ((p.typ ?? "obdlznik") === t ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}
                   >
-                    {t === "obdlznik" ? "⬜ Obdĺžnik" : "⏐ Čiara / stena"}
+                    {t === "obdlznik" ? "⬜ Obdĺžnik" : t === "ciara" ? "⏐ Čiara / stena" : "🪨 Existujúci stĺp"}
                   </button>
                 ))}
               </div>
