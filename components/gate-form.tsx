@@ -1,7 +1,7 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { SIRKY_LAMIEL_MM, POVRCHY, PRISLUSENSTVO_POHONU, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana } from "@/lib/gate-config"
+import { SIRKY_LAMIEL_MM, POVRCHY, PRISLUSENSTVO_POHONU, PRISLUSENSTVO_BRANKY, type SirkaLamely, type PovrchId, type Orientacia, type TypProduktu, type Strana, type PrislusenstvoPolozka } from "@/lib/gate-config"
 import type { GateInput } from "@/lib/gate-calc"
 
 interface Props {
@@ -88,6 +88,40 @@ function StranaPicker({
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return <h3 className="text-sm font-bold uppercase tracking-wide text-primary">{children}</h3>
+}
+
+function PrislusenstvoChecklist({ zoznam, vstup, onChange }: { zoznam: PrislusenstvoPolozka[]; vstup: GateInput; onChange: (v: GateInput) => void }) {
+  return (
+    <>
+      {zoznam.map((polozka) => {
+        const mnozstvo = vstup.prislusenstvo[polozka.id] ?? 0
+        const zvolene = mnozstvo > 0
+        return (
+          <div key={polozka.id} className="flex items-center justify-between gap-3 rounded-md border-2 border-input bg-background px-3 py-2.5">
+            <button
+              type="button"
+              onClick={() => onChange({ ...vstup, prislusenstvo: { ...vstup.prislusenstvo, [polozka.id]: zvolene ? 0 : 1 } })}
+              aria-pressed={zvolene}
+              className={"flex-1 rounded border-2 px-3 py-2 text-left text-sm font-bold transition-colors " +
+                (zvolene ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}
+            >
+              {zvolene ? "✓ " : ""}{polozka.nazov} <span className="font-normal opacity-70">~{polozka.cena} €{polozka.mnozstvo ? "/ks" : ""}</span>
+            </button>
+            {polozka.mnozstvo && zvolene && (
+              <input
+                type="number"
+                inputMode="numeric"
+                min={1}
+                value={mnozstvo}
+                onChange={(e) => onChange({ ...vstup, prislusenstvo: { ...vstup.prislusenstvo, [polozka.id]: Math.max(1, Number.parseInt(e.target.value, 10) || 1) } })}
+                className="w-16 rounded border-2 border-input bg-background px-2 py-2 text-center font-mono text-lg font-bold outline-none focus:border-primary"
+              />
+            )}
+          </div>
+        )
+      })}
+    </>
+  )
 }
 
 export function GateForm(props: Props) {
@@ -258,36 +292,18 @@ export function GateForm(props: Props) {
         </div>
       )}
 
+      {jeBranka && (
+        <div className="flex flex-col gap-3 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
+          <SectionTitle>Príslušenstvo — čo doobjednať</SectionTitle>
+          <PrislusenstvoChecklist zoznam={PRISLUSENSTVO_BRANKY} vstup={vstup} onChange={onChange} />
+        </div>
+      )}
+
       {vstup.pohon && (jeBrana || jePosuvna) && (
         <div className="flex flex-col gap-3 rounded-md border-2 border-primary/40 bg-secondary/40 p-4">
           <SectionTitle>Príslušenstvo k pohonu — čo doobjednať</SectionTitle>
-          {PRISLUSENSTVO_POHONU[jePosuvna ? "posuvnaBrana" : "dvojkridlovaBrana"].map((polozka) => {
-            const mnozstvo = vstup.prislusenstvo[polozka.id] ?? 0
-            const zvolene = mnozstvo > 0
-            return (
-              <div key={polozka.id} className="flex items-center justify-between gap-3 rounded-md border-2 border-input bg-background px-3 py-2.5">
-                <button
-                  type="button"
-                  onClick={() => onChange({ ...vstup, prislusenstvo: { ...vstup.prislusenstvo, [polozka.id]: zvolene ? 0 : 1 } })}
-                  aria-pressed={zvolene}
-                  className={"flex-1 rounded border-2 px-3 py-2 text-left text-sm font-bold transition-colors " +
-                    (zvolene ? "border-primary bg-primary text-primary-foreground" : "border-input bg-background text-foreground hover:border-primary")}
-                >
-                  {zvolene ? "✓ " : ""}{polozka.nazov} <span className="font-normal opacity-70">~{polozka.cena} €{polozka.mnozstvo ? "/ks" : ""}</span>
-                </button>
-                {polozka.mnozstvo && zvolene && (
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    min={1}
-                    value={mnozstvo}
-                    onChange={(e) => onChange({ ...vstup, prislusenstvo: { ...vstup.prislusenstvo, [polozka.id]: Math.max(1, Number.parseInt(e.target.value, 10) || 1) } })}
-                    className="w-16 rounded border-2 border-input bg-background px-2 py-2 text-center font-mono text-lg font-bold outline-none focus:border-primary"
-                  />
-                )}
-              </div>
-            )
-          })}
+          <p className="text-xs text-muted-foreground">Jeden pár fotobuniek je súčasťou pohonu (v cene inštalačného kitu) — tu je len doplnkové príslušenstvo navyše.</p>
+          <PrislusenstvoChecklist zoznam={PRISLUSENSTVO_POHONU[jePosuvna ? "posuvnaBrana" : "dvojkridlovaBrana"]} vstup={vstup} onChange={onChange} />
         </div>
       )}
 

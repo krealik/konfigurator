@@ -6,6 +6,7 @@ import {
   CENNIK,
   PRISLUSENSTVO_POHONU,
   PRISLUSENSTVO_KOLAJNICA,
+  PRISLUSENSTVO_BRANKY,
   najdiPovrch,
   type SirkaLamely,
   type PovrchId,
@@ -219,6 +220,15 @@ export function vypocitajBranku(vstup: GateInput, zameranie: ZameranieVysledok):
   const prislusenstvoVybrane: PrislusenstvoRiadok[] = []
   if (jePosuvna && vstup.kolajnica) {
     prislusenstvoVybrane.push({ nazov: PRISLUSENSTVO_KOLAJNICA.nazov, cenaKs: PRISLUSENSTVO_KOLAJNICA.cena, mnozstvo: 1, spolu: PRISLUSENSTVO_KOLAJNICA.cena })
+  }
+  // Príslušenstvo pre malú bránku — nezávislé od pohonu (bránka sa vždy otvára ručne).
+  if (!jeBrana && !jePosuvna) {
+    for (const polozka of PRISLUSENSTVO_BRANKY) {
+      const mnozstvo = vstup.prislusenstvo[polozka.id] ?? 0
+      if (mnozstvo > 0) {
+        prislusenstvoVybrane.push({ nazov: polozka.nazov, cenaKs: polozka.cena, mnozstvo, spolu: polozka.cena * mnozstvo })
+      }
+    }
   }
   // Príslušenstvo k pohonu — len keď je pohon zapnutý.
   if (vstup.pohon && (jeBrana || jePosuvna)) {

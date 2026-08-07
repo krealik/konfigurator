@@ -65,18 +65,30 @@ export interface PrislusenstvoPolozka {
 /** Koľajnica/vodiaca lišta — štrukturálna súčasť posúvnej brány, potrebná aj bez pohonu. */
 export const PRISLUSENSTVO_KOLAJNICA: PrislusenstvoPolozka = { id: "kolajnica", nazov: "Koľajnica / vodiaca lišta", cena: 180 }
 
-/** Príslušenstvo k pohonu — líši sa podľa typu brány, relevantné len keď je zapnutý pohon. */
+/** Príslušenstvo pre malú bránku — nezávisí od pohonu, bránka sa vždy otvára ručne. */
+export const PRISLUSENSTVO_BRANKY: PrislusenstvoPolozka[] = [
+  { id: "el-zamok", nazov: "Elektrický zámok", cena: 90 },
+  { id: "kryca-lista", nazov: "Krycia lišta", cena: 25 },
+]
+
+/**
+ * Príslušenstvo k pohonu — líši sa podľa typu brány, relevantné len keď je zapnutý pohon.
+ * Jeden pár fotobuniek je súčasťou pohonu (v cene inštalačného kitu) — tu je len DOPLNKOVÉ
+ * príslušenstvo, ktoré sa objednáva navyše.
+ */
 export const PRISLUSENSTVO_POHONU: Record<"dvojkridlovaBrana" | "posuvnaBrana", PrislusenstvoPolozka[]> = {
   dvojkridlovaBrana: [
     { id: "ramena", nazov: "Ramená pohonu (pár)", cena: 250 },
-    { id: "fotobunky", nazov: "Fotobunky (svetelné senzory)", cena: 80 },
-    { id: "ovladac", nazov: "Diaľkový ovládač", cena: 20, mnozstvo: true },
+    { id: "majak", nazov: "Maják (výstražné svetlo)", cena: 45 },
+    { id: "fotobunky-dalsie", nazov: "Ďalší pár fotobuniek", cena: 80, mnozstvo: true },
+    { id: "ovladac", nazov: "Ďalší diaľkový ovládač", cena: 20, mnozstvo: true },
   ],
   posuvnaBrana: [
     { id: "motor", nazov: "Motor pohonu", cena: 350 },
-    { id: "fotobunky", nazov: "Fotobunky (svetelné senzory)", cena: 80 },
+    { id: "majak", nazov: "Maják (výstražné svetlo)", cena: 45 },
+    { id: "fotobunky-dalsie", nazov: "Ďalší pár fotobuniek", cena: 80, mnozstvo: true },
     { id: "stop", nazov: "STOP tlačidlo", cena: 25 },
-    { id: "ovladac", nazov: "Diaľkový ovládač", cena: 20, mnozstvo: true },
+    { id: "ovladac", nazov: "Ďalší diaľkový ovládač", cena: 20, mnozstvo: true },
   ],
 }
 
