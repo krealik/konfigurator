@@ -25,13 +25,35 @@ export function najdiPovrch(id: PovrchId) {
 }
 
 export type Orientacia = "vertikalne" | "horizontalne"
-export type TypProduktu = "branka" | "dvojkridlovaBrana"
+export type TypProduktu = "branka" | "dvojkridlovaBrana" | "posuvnaBrana"
+
+/** Strana — použitá pre smer otvárania (bránka) aj stranu posunu (posúvna brána). */
+export type Strana = "vlavo" | "vpravo"
 
 export const DEFAULTS = {
   typProduktu: "branka" as TypProduktu,
   nazovZakaznika: "",
-  sirkaKridla: 1200,
-  vyskaKridla: 1500,
+
+  // --- Zameranie na mieste ---
+  // Jednokrídlová bránka:
+  svetlaSirka: 1300,
+  vola: 100,
+  smerOtvarania: "vlavo" as Strana, // strana, na ktorej sú panty
+
+  // Dvojkrídlová brána:
+  volaVlavo: 60,
+  volaVpravo: 60,
+  medzeraStred: 20,
+
+  // Posúvna brána:
+  presah: 500,
+  stranaPosunu: "vpravo" as Strana,
+
+  // Spoločné — výška:
+  vyskaPodmurovky: 0,
+  medzeraPodBranou: 100,
+  celkovaVyska: 1600,
+
   sirkaLamely: 100 as SirkaLamely,
   medzera: 30,
   povrch: "antracit" as PovrchId,
@@ -45,6 +67,7 @@ export const CENNIK = {
   lamelaKs: 50,
   instalacnyKitBranka: 150,
   instalacnyKitBrana: 200,
+  instalacnyKitPosuvna: 350,
 }
 
 export const KLUCKA_VYSKA_MM = 1050
